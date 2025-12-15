@@ -1,0 +1,2995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UN Chandra PDF Viewer</title>
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1-CVHB2IZHTB4xVxACdyWqmdAyZYYfyyn">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bg-light: #f1f5f9;
+            --bg-dark: #0f172a;
+            --surface-light: #ffffff;
+            --surface-dark: #1e293b;
+            --text-light: #1e293b;
+            --text-dark: #f1f5f9;
+            --border-light: #e2e8f0;
+            --border-dark: #334155;
+            --hover-light: #f8fafc;
+            --hover-dark: #334155;
+        }
+
+        body.dark {
+            --bg: var(--bg-dark);
+            --surface: var(--surface-dark);
+            --text: var(--text-dark);
+            --border: var(--border-dark);
+            --hover: var(--hover-dark);
+        }
+
+        body.light {
+            --bg: var(--bg-light);
+            --surface: var(--surface-light);
+            --text: var(--text-light);
+            --border: var(--border-light);
+            --hover: var(--hover-light);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            transition: background 0.3s ease, color 0.3s ease;
+            overflow: hidden;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+
+        .toolbar-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: white;
+        }
+
+        .toolbar-btn:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .toolbar-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .toolbar-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        .thumbnail {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .thumbnail:hover {
+            border-color: var(--primary);
+            transform: scale(1.02);
+        }
+
+        .thumbnail.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .pdf-container {
+            scrollbar-width: thin;
+            scrollbar-color: #64748b transparent;
+        }
+
+        .pdf-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .pdf-container::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        .pdf-container::-webkit-scrollbar-thumb {
+            background: #64748b;
+            border-radius: 4px;
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 6px;
+            background: var(--surface);
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            padding: 6px;
+            z-index: 1000;
+            min-width: 120px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-item:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .dropdown-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+        }
+
+        .toast {
+            animation: toastIn 0.4s ease forwards;
+            min-width: 260px;
+            max-width: 380px;
+        }
+
+        .toast.removing {
+            animation: toastOut 0.4s ease forwards;
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toastOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
+        }
+
+        .loading-spinner {
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .page-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Highlight Layer - sits between canvas and text layer */
+        .highlightLayer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .highlight-rect {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 2px;
+        }
+
+        .highlight-rect.yellow { background-color: rgba(255, 235, 59, 0.5); }
+        .highlight-rect.green { background-color: rgba(76, 175, 80, 0.45); }
+        .highlight-rect.red { background-color: rgba(244, 67, 54, 0.45); }
+        .highlight-rect.pink { background-color: rgba(233, 30, 99, 0.4); }
+
+        .textLayer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            opacity: 1;
+            line-height: 1.0;
+            -webkit-text-size-adjust: none;
+            -moz-text-size-adjust: none;
+            text-size-adjust: none;
+            forced-color-adjust: none;
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        .textLayer > span {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transform-origin: 0% 0%;
+        }
+
+        .textLayer ::selection {
+            background: rgba(0, 100, 255, 0.4);
+        }
+
+        .textLayer .search-highlight {
+            color: transparent;
+            background-color: rgba(255, 235, 59, 0.8);
+            border-radius: 3px;
+            padding: 2px 0;
+            box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.8);
+        }
+
+        .textLayer .search-highlight.current {
+            background-color: rgba(255, 152, 0, 0.9);
+            box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.9);
+        }
+
+        /* Color Tray */
+        .color-tray {
+            position: fixed;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            z-index: 10001;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+        }
+
+        .color-tray.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .color-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.15);
+            border-color: rgba(255,255,255,0.8);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+        .color-btn.yellow { background: linear-gradient(135deg, #FFEB3B, #FFC107); }
+        .color-btn.green { background: linear-gradient(135deg, #4CAF50, #2E7D32); }
+        .color-btn.red { background: linear-gradient(135deg, #F44336, #C62828); }
+        .color-btn.pink { background: linear-gradient(135deg, #E91E63, #AD1457); }
+
+        .color-btn-remove {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px dashed var(--border);
+            background: var(--bg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+
+        .color-btn-remove:hover {
+            transform: scale(1.15);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .tray-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+        }
+
+        .context-menu {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            z-index: 10000;
+            min-width: 160px;
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            transition: all 0.15s ease;
+        }
+
+        .context-menu-item:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        .search-box {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            width: 280px;
+            z-index: 1000;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 460px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #8b5cf6);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #1e293b;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 10000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            background: var(--hover);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .kbd {
+            padding: 3px 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .status-indicator.modified {
+            background: #f59e0b;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .timer-container {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 10px;
+        }
+
+        .timer-input {
+            width: 32px;
+            height: 26px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .timer-input:focus {
+            border-color: var(--primary);
+        }
+
+        .timer-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .timer-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .timer-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .timer-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .timer-btn.play {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .timer-btn.pause {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .timer-btn.reset {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .timer-running {
+            animation: timerPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes timerPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .timer-finished {
+            animation: timerFlash 0.5s ease-in-out infinite;
+            color: #ef4444 !important;
+        }
+
+        @keyframes timerFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .clock-container {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 10px;
+        }
+
+        .clock-display {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .clock-ampm {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 700;
+        }
+
+        .premium-btn {
+            position: relative;
+            padding: 14px 36px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+            background-size: 200% 200%;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .premium-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+
+        .premium-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 35px rgba(59, 130, 246, 0.5);
+            background-position: 100% 0;
+        }
+
+        .premium-btn:hover::before {
+            left: 100%;
+        }
+
+        .premium-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .save-btn {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .save-btn.primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .save-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+        }
+
+        .save-btn.secondary {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .save-btn.secondary:hover {
+            background: var(--hover);
+        }
+
+        :fullscreen {
+            background: var(--bg);
+        }
+
+        :fullscreen #app {
+            height: 100vh;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #pdfContainer, #pdfContainer * { visibility: visible; }
+            #pdfContainer { position: absolute; left: 0; top: 0; }
+        }
+
+        @media (max-width: 1200px) {
+            .hide-lg { display: none !important; }
+        }
+
+        @media (max-width: 900px) {
+            .hide-md { display: none !important; }
+        }
+
+        @media (max-width: 768px) {
+            .hide-mobile { display: none !important; }
+            .toolbar-btn { width: 26px; height: 26px; font-size: 11px; }
+            #sidebar { position: absolute; z-index: 100; left: 0; }
+            #sidebar.collapsed { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body class="light">
+    <div id="app" class="flex flex-col h-screen">
+        <!-- Top Toolbar -->
+        <header class="flex items-center justify-between px-2 py-1.5 border-b" style="background: var(--surface); border-color: var(--border);">
+            <!-- Left Section -->
+            <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1.5 mr-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+                        <i class="fas fa-file-pdf text-white text-xs"></i>
+                    </div>
+                    <span class="font-bold text-sm hide-md">UN Chandra PDF Viewer</span>
+                </div>
+                
+                <button onclick="openFile()" class="toolbar-btn" data-tooltip="Open PDF (Ctrl+O)">
+                    <i class="fas fa-folder-open"></i>
+                </button>
+                <input type="file" id="fileInput" accept=".pdf,application/pdf" class="hidden" onchange="handleFileSelect(event)">
+
+                <button onclick="savePDFWithHighlights()" class="toolbar-btn" data-tooltip="Save PDF (Ctrl+S)" id="saveBtn" disabled>
+                    <i class="fas fa-save"></i>
+                </button>
+
+                <button onclick="toggleSidebar()" class="toolbar-btn" data-tooltip="Toggle Sidebar" id="sidebarBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <div class="divider"></div>
+
+                <!-- Highlight Mode Toggle -->
+                <button onclick="toggleHighlightMode()" class="toolbar-btn" data-tooltip="Highlight Mode (H)" id="highlightModeBtn" disabled>
+                    <i class="fas fa-highlighter"></i>
+                </button>
+            </div>
+
+            <!-- Center Section - Navigation -->
+            <div class="flex items-center gap-1">
+                <button onclick="firstPage()" class="toolbar-btn hide-lg" data-tooltip="First Page" id="firstPageBtn" disabled>
+                    <i class="fas fa-angles-left"></i>
+                </button>
+                <button onclick="prevPage()" class="toolbar-btn" data-tooltip="Previous" id="prevBtn" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <div class="flex items-center gap-1 mx-1 px-2 py-1 rounded-md" style="background: var(--bg);">
+                    <input type="number" id="pageInput" class="w-10 text-center text-xs font-semibold border-none outline-none" 
+                           style="background: transparent; color: var(--text);"
+                           min="1" value="1" onchange="goToPage(this.value)" onkeydown="handlePageInputKey(event)" disabled>
+                    <span class="text-xs opacity-50">/</span>
+                    <span id="totalPages" class="text-xs font-semibold">0</span>
+                </div>
+                
+                <button onclick="nextPage()" class="toolbar-btn" data-tooltip="Next" id="nextBtn" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <button onclick="lastPage()" class="toolbar-btn hide-lg" data-tooltip="Last Page" id="lastPageBtn" disabled>
+                    <i class="fas fa-angles-right"></i>
+                </button>
+
+                <div class="divider"></div>
+
+                <!-- Zoom Controls -->
+                <button onclick="zoomOut()" class="toolbar-btn" data-tooltip="Zoom Out" id="zoomOutBtn" disabled>
+                    <i class="fas fa-minus"></i>
+                </button>
+                
+                <div class="relative">
+                    <button onclick="toggleDropdown('zoomDropdown')" class="toolbar-btn px-2" style="width: auto;" data-tooltip="Zoom" id="zoomBtn" disabled>
+                        <span id="zoomLevel" class="text-xs font-semibold">100%</span>
+                    </button>
+                    <div id="zoomDropdown" class="dropdown">
+                        <div class="dropdown-item" onclick="setZoom(0.5)">50%</div>
+                        <div class="dropdown-item" onclick="setZoom(0.75)">75%</div>
+                        <div class="dropdown-item active" onclick="setZoom(1)">100%</div>
+                        <div class="dropdown-item" onclick="setZoom(1.5)">150%</div>
+                        <div class="dropdown-item" onclick="setZoom(2)">200%</div>
+                        <div style="height: 1px; background: var(--border); margin: 4px 0;"></div>
+                        <div class="dropdown-item" onclick="fitToPage()">Fit Page</div>
+                        <div class="dropdown-item" onclick="fitToWidth()">Fit Width</div>
+                    </div>
+                </div>
+                
+                <button onclick="zoomIn()" class="toolbar-btn" data-tooltip="Zoom In" id="zoomInBtn" disabled>
+                    <i class="fas fa-plus"></i>
+                </button>
+
+                <div class="divider hide-md"></div>
+
+                <!-- Rotate -->
+                <button onclick="rotatePage(-90)" class="toolbar-btn hide-md" data-tooltip="Rotate Left" id="rotateLeftBtn" disabled>
+                    <i class="fas fa-rotate-left"></i>
+                </button>
+                <button onclick="rotatePage(90)" class="toolbar-btn hide-md" data-tooltip="Rotate Right" id="rotateRightBtn" disabled>
+                    <i class="fas fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Right Section -->
+            <div class="flex items-center gap-2">
+                <!-- Countdown Timer -->
+                <div class="timer-container flex items-center gap-2 hide-md">
+                    <i class="fas fa-stopwatch text-orange-500 text-xs"></i>
+                    
+                    <div id="timerInputs" class="flex items-center gap-0.5">
+                        <input type="number" id="timerHours" class="timer-input" value="00" min="0" max="99" placeholder="HH">
+                        <span class="text-sm font-bold opacity-40">:</span>
+                        <input type="number" id="timerMinutes" class="timer-input" value="00" min="0" max="59" placeholder="MM">
+                        <span class="text-sm font-bold opacity-40">:</span>
+                        <input type="number" id="timerSeconds" class="timer-input" value="00" min="0" max="59" placeholder="SS">
+                    </div>
+                    
+                    <div id="timerDisplay" class="timer-display hidden">
+                        <span id="timerTime">00:00:00</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-1">
+                        <button onclick="toggleTimer()" id="timerPlayPauseBtn" class="timer-btn play" data-tooltip="Start Timer">
+                            <i class="fas fa-play" id="timerPlayPauseIcon"></i>
+                        </button>
+                        <button onclick="resetTimer()" id="timerResetBtn" class="timer-btn reset" data-tooltip="Reset Timer">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="divider hide-md"></div>
+
+                <!-- Real-Time Clock -->
+                <div class="clock-container flex items-center gap-2 hide-mobile">
+                    <i class="fas fa-clock text-blue-500 text-xs"></i>
+                    <span id="currentTime" class="clock-display"></span>
+                    <span id="ampm" class="clock-ampm"></span>
+                </div>
+
+                <div class="divider hide-mobile"></div>
+
+                <!-- Search -->
+                <div class="relative" id="searchContainer">
+                    <button onclick="toggleSearch()" class="toolbar-btn" data-tooltip="Search (Ctrl+F)" id="searchToggle" disabled>
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <div id="searchBox" class="search-box hidden">
+                        <div class="flex items-center gap-2 mb-2">
+                            <input type="text" id="searchInput" placeholder="Search in document..." 
+                                   class="search-input flex-1"
+                                   onkeydown="handleSearchKey(event)">
+                            <button onclick="performSearch()" class="toolbar-btn" data-tooltip="Search">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button onclick="closeSearch()" class="toolbar-btn" data-tooltip="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span id="searchResults" class="text-xs opacity-60">Enter search term</span>
+                            <div class="flex gap-1">
+                                <button onclick="searchPrev()" class="toolbar-btn" data-tooltip="Previous Match" id="searchPrevBtn">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                                <button onclick="searchNext()" class="toolbar-btn" data-tooltip="Next Match" id="searchNextBtn">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fullscreen -->
+                <button onclick="toggleFullscreen()" class="toolbar-btn hide-mobile" data-tooltip="Fullscreen" id="fullscreenBtn">
+                    <i class="fas fa-expand" id="fullscreenIcon"></i>
+                </button>
+
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="toolbar-btn" data-tooltip="Toggle Theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+
+                <!-- Help -->
+                <button onclick="showHelp()" class="toolbar-btn" data-tooltip="Help (?)">
+                    <i class="fas fa-question"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="w-52 border-r flex flex-col transition-all duration-300" 
+                   style="background: var(--surface); border-color: var(--border);">
+                <div class="flex border-b" style="border-color: var(--border);">
+                    <button onclick="switchTab('thumbnails')" id="tabThumbnails" class="tab-btn active">
+                        <i class="fas fa-th-large"></i>
+                        <span>Pages</span>
+                    </button>
+                    <button onclick="switchTab('outline')" id="tabOutline" class="tab-btn">
+                        <i class="fas fa-list"></i>
+                        <span>Outline</span>
+                    </button>
+                </div>
+
+                <div id="thumbnailsPanel" class="flex-1 overflow-y-auto sidebar p-2">
+                    <div class="flex flex-col items-center justify-center h-full text-center opacity-50 p-4">
+                        <i class="fas fa-file-pdf text-4xl mb-3"></i>
+                        <p class="text-xs">No document loaded</p>
+                    </div>
+                </div>
+
+                <div id="outlinePanel" class="flex-1 overflow-y-auto sidebar p-2 hidden">
+                    <div class="flex flex-col items-center justify-center h-full text-center opacity-50 p-4">
+                        <i class="fas fa-sitemap text-4xl mb-3"></i>
+                        <p class="text-xs">No outline available</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- PDF Viewer -->
+            <main class="flex-1 overflow-hidden relative" id="viewerContainer" style="background: var(--bg);">
+                <!-- Drop Zone / Welcome Screen -->
+                <div id="dropZone" class="drop-zone absolute inset-4 flex items-center justify-center">
+                    <div class="text-center max-w-md p-6 flex flex-col items-center justify-center">
+                        <div class="w-28 h-28 mb-6 rounded-3xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-2xl mx-auto">
+                            <i class="fas fa-file-pdf text-5xl text-white"></i>
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold mb-2">Welcome to Udit Narayan Chandra PDF Viewer</h2>
+                        <p class="text-base opacity-60 mb-6">Open, view, highlight and navigate your PDF documents with ease</p>
+                        
+                        <button onclick="openFile()" class="premium-btn">
+                            <i class="fas fa-folder-open mr-2"></i>Open PDF File
+                        </button>
+                        
+                        <div class="mt-8 p-5 rounded-xl border-2 border-dashed opacity-60" style="border-color: var(--border);">
+                            <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                            <p class="text-sm">or drag & drop your PDF file here</p>
+                        </div>
+
+                        <div class="mt-6 flex items-center justify-center gap-6 text-xs opacity-50">
+                            <span class="flex items-center gap-1"><i class="fas fa-highlighter"></i>Highlight</span>
+                            <span class="flex items-center gap-1"><i class="fas fa-save"></i>Save</span>
+                            <span class="flex items-center gap-1"><i class="fas fa-bolt"></i>Fast</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="loadingIndicator" class="hidden absolute inset-0 flex items-center justify-center z-50" style="background: rgba(0,0,0,0.7);">
+                    <div class="p-8 rounded-xl text-center" style="background: var(--surface);">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="font-semibold text-base mb-1" id="loadingText">Loading PDF...</p>
+                        <p class="text-xs opacity-60 mb-3" id="loadingSubtext">Please wait</p>
+                        <div class="progress-bar w-48">
+                            <div id="loadingProgress" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF Pages Container -->
+                <div id="pdfContainer" class="hidden h-full overflow-auto pdf-container" onscroll="handleScroll()">
+                    <div id="pagesWrapper" class="flex flex-col items-center gap-4 py-4 min-h-full">
+                        <!-- Pages will be rendered here -->
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Bottom Status Bar -->
+        <footer class="flex items-center justify-between px-3 py-1.5 text-xs border-t" 
+                style="background: var(--surface); border-color: var(--border);">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText" class="opacity-60">Ready</span>
+                </div>
+                <span id="fileName" class="font-medium truncate max-w-xs"></span>
+                <span id="modifiedBadge" class="hidden px-2 py-0.5 rounded text-xs font-medium bg-amber-500 text-white">Modified</span>
+            </div>
+            <div class="flex items-center gap-4 opacity-60">
+                <span id="highlightCount"></span>
+                <span id="fileSize"></span>
+                <span id="pageSize"></span>
+                <span id="renderTime"></span>
+                <div class="flex items-center gap-1">
+                    <i class="fas fa-clock text-xs"></i>
+                    <span id="statusBarTime" class="font-mono"></span>
+                    <span id="statusBarAmPm" class="text-xs font-semibold"></span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Color Tray for Highlighting -->
+    <div id="colorTray" class="color-tray">
+        <button class="color-btn yellow" onclick="applyHighlight('yellow')" data-tooltip="Yellow"></button>
+        <button class="color-btn green" onclick="applyHighlight('green')" data-tooltip="Green"></button>
+        <button class="color-btn red" onclick="applyHighlight('red')" data-tooltip="Red"></button>
+        <button class="color-btn pink" onclick="applyHighlight('pink')" data-tooltip="Pink"></button>
+        <div class="tray-divider"></div>
+        <button class="color-btn-remove" onclick="removeHighlightAtSelection()" data-tooltip="Remove Highlight">
+            <i class="fas fa-eraser"></i>
+        </button>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-3"></div>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu hidden">
+        <div class="context-menu-item" onclick="zoomIn()">
+            <i class="fas fa-plus w-4"></i>Zoom In
+        </div>
+        <div class="context-menu-item" onclick="zoomOut()">
+            <i class="fas fa-minus w-4"></i>Zoom Out
+        </div>
+        <div class="context-menu-item" onclick="setZoom(1)">
+            <i class="fas fa-undo w-4"></i>Reset Zoom
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="rotatePage(90)">
+            <i class="fas fa-rotate-right w-4"></i>Rotate Right
+        </div>
+        <div class="context-menu-item" onclick="rotatePage(-90)">
+            <i class="fas fa-rotate-left w-4"></i>Rotate Left
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="printPDF()">
+            <i class="fas fa-print w-4"></i>Print
+        </div>
+        <div class="context-menu-item" onclick="downloadPDF()">
+            <i class="fas fa-download w-4"></i>Download
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal-overlay" onclick="closeModal(event, 'helpModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-bold">Keyboard Shortcuts</h3>
+                <button onclick="closeHelp()" class="toolbar-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-xs">
+                <div>
+                    <h4 class="font-semibold text-xs opacity-50 uppercase mb-2">File</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between py-1.5"><span>Open file</span><kbd class="kbd">Ctrl+O</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Save with highlights</span><kbd class="kbd">Ctrl+S</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Print</span><kbd class="kbd">Ctrl+P</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Search</span><kbd class="kbd">Ctrl+F</kbd></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-xs opacity-50 uppercase mb-2">Highlighting</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between py-1.5"><span>Toggle highlight mode</span><kbd class="kbd">H</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Select text & choose color</span><span class="opacity-60">Mouse select</span></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-xs opacity-50 uppercase mb-2">Navigation</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between py-1.5"><span>Previous/Next page</span><kbd class="kbd">← / →</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>First/Last page</span><kbd class="kbd">Home / End</kbd></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-xs opacity-50 uppercase mb-2">View</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between py-1.5"><span>Zoom in/out</span><kbd class="kbd">Ctrl +/-</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Reset zoom</span><kbd class="kbd">Ctrl+0</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Fullscreen</span><kbd class="kbd">F11</kbd></div>
+                        <div class="flex justify-between py-1.5"><span>Toggle theme</span><kbd class="kbd">Ctrl+D</kbd></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t text-center text-xs opacity-50" style="border-color: var(--border);">
+                UN Chandra PDF Viewer v2.1 - Highlighting & Save Enabled
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Alert Modal -->
+    <div id="timerAlertModal" class="modal-overlay" onclick="closeTimerAlert()">
+        <div class="modal-content text-center" onclick="event.stopPropagation()">
+            <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center animate-pulse">
+                <i class="fas fa-bell text-3xl text-white"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">⏰ Time's Up!</h3>
+            <p class="text-base opacity-60 mb-6">Your countdown timer has finished.</p>
+            <button onclick="closeTimerAlert()" class="premium-btn">
+                OK, Got it!
+            </button>
+        </div>
+    </div>
+
+    <!-- Save Confirmation Modal -->
+    <div id="saveModal" class="modal-overlay" onclick="event.stopPropagation()">
+        <div class="modal-content text-center" onclick="event.stopPropagation()">
+            <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-3xl text-white"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Unsaved Changes</h3>
+            <p class="text-base opacity-60 mb-6">You have highlighted text that hasn't been saved. Would you like to save your changes?</p>
+            <div class="flex items-center justify-center gap-3">
+                <button onclick="confirmDontSave()" class="save-btn secondary">
+                    <i class="fas fa-times mr-2"></i>Don't Save
+                </button>
+                <button onclick="confirmSave()" class="save-btn primary">
+                    <i class="fas fa-save mr-2"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Application State
+        const state = {
+            pdfDoc: null,
+            pdfBytes: null,
+            currentPage: 1,
+            totalPages: 0,
+            scale: 1,
+            rotation: 0,
+            isDarkMode: false,
+            sidebarVisible: true,
+            renderedPages: new Set(),
+            isRendering: false,
+            fileName: '',
+            fileSize: 0,
+            timerInterval: null,
+            timerRunning: false,
+            timerSeconds: 0,
+            timerInitialSeconds: 0,
+            searchMatches: [],
+            currentMatchIndex: -1,
+            searchQuery: '',
+            // Highlighting state - using overlay approach
+            highlights: [], // Stores highlight rect data for saving
+            isModified: false,
+            highlightMode: false,
+            currentSelection: null,
+            pendingClose: false,
+            pageInfoCache: {}
+        };
+
+        // DOM Elements
+        const elements = {
+            dropZone: document.getElementById('dropZone'),
+            pdfContainer: document.getElementById('pdfContainer'),
+            pagesWrapper: document.getElementById('pagesWrapper'),
+            viewerContainer: document.getElementById('viewerContainer'),
+            thumbnailsPanel: document.getElementById('thumbnailsPanel'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            sidebar: document.getElementById('sidebar'),
+            colorTray: document.getElementById('colorTray')
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+
+        function init() {
+            setupDragDrop();
+            setupKeyboardShortcuts();
+            setupTooltips();
+            setupContextMenu();
+            setupTextSelection();
+            setupBeforeUnload();
+            loadThemePreference();
+            startRealTimeClock();
+            setupTimerInputs();
+        }
+
+        // ==================== HIGHLIGHTING SYSTEM (OVERLAY APPROACH) ====================
+
+        function setupTextSelection() {
+            document.addEventListener('mouseup', handleTextSelection);
+            document.addEventListener('mousedown', (e) => {
+                if (!e.target.closest('#colorTray')) {
+                    hideColorTray();
+                }
+            });
+        }
+
+        function handleTextSelection(e) {
+            if (!state.pdfDoc) return;
+            
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText.length > 0 && e.target.closest('.textLayer')) {
+                state.currentSelection = {
+                    selection: selection,
+                    text: selectedText,
+                    range: selection.getRangeAt(0).cloneRange()
+                };
+                
+                showColorTray(e.clientX, e.clientY);
+            }
+        }
+
+        function showColorTray(x, y) {
+            const tray = elements.colorTray;
+            const trayWidth = 200;
+            const trayHeight = 50;
+            
+            let posX = x - trayWidth / 2;
+            let posY = y - trayHeight - 15;
+            
+            if (posX < 10) posX = 10;
+            if (posX + trayWidth > window.innerWidth - 10) posX = window.innerWidth - trayWidth - 10;
+            if (posY < 10) posY = y + 25;
+            
+            tray.style.left = posX + 'px';
+            tray.style.top = posY + 'px';
+            tray.classList.add('show');
+        }
+
+        function hideColorTray() {
+            elements.colorTray.classList.remove('show');
+        }
+
+        async function applyHighlight(color) {
+            if (!state.currentSelection) return;
+            
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = state.currentSelection.range;
+            
+            // Get the text layer and page info
+            const textLayerElement = range.startContainer.parentElement?.closest('.textLayer');
+            if (!textLayerElement) return;
+            
+            const pageWrapper = textLayerElement.closest('.page-wrapper');
+            const pageNum = parseInt(pageWrapper.id.replace('wrapper-', ''));
+            
+            // Get or create highlight layer
+            let highlightLayer = pageWrapper.querySelector('.highlightLayer');
+            if (!highlightLayer) {
+                highlightLayer = document.createElement('div');
+                highlightLayer.className = 'highlightLayer';
+                pageWrapper.insertBefore(highlightLayer, textLayerElement);
+            }
+            
+            const textLayerRect = textLayerElement.getBoundingClientRect();
+            
+            // Get all client rects for the selection (handles multi-line selections)
+            const rects = range.getClientRects();
+            
+            // Get page info for PDF coordinate conversion
+            const pageInfo = await getPageInfo(pageNum);
+            const displayWidth = textLayerElement.offsetWidth;
+            const displayHeight = textLayerElement.offsetHeight;
+            const scaleX = pageInfo.width / displayWidth;
+            const scaleY = pageInfo.height / displayHeight;
+            
+            for (let i = 0; i < rects.length; i++) {
+                const rect = rects[i];
+                
+                // Calculate position relative to text layer
+                const relX = rect.left - textLayerRect.left;
+                const relY = rect.top - textLayerRect.top;
+                const relW = rect.width;
+                // Tighten the height to just cover the text (reduce by ~20%)
+                const relH = rect.height * 0.8;
+                const adjustedY = relY + (rect.height * 0.1); // Center the tightened height
+                
+                // Skip very small rects (spaces, etc.)
+                if (relW < 2 || relH < 2) continue;
+                
+                const highlightId = Date.now() + Math.random() + i;
+                
+                // Create visual highlight overlay
+                const highlightRect = document.createElement('div');
+                highlightRect.className = `highlight-rect ${color}`;
+                highlightRect.dataset.highlightId = highlightId;
+                highlightRect.style.cssText = `
+                    left: ${relX}px;
+                    top: ${adjustedY}px;
+                    width: ${relW}px;
+                    height: ${relH}px;
+                `;
+                highlightLayer.appendChild(highlightRect);
+                
+                // Store highlight data for PDF saving
+                // Convert to PDF coordinates (origin at bottom-left)
+                const pdfX = relX * scaleX;
+                const pdfY = pageInfo.height - (adjustedY * scaleY) - (relH * scaleY);
+                const pdfW = relW * scaleX;
+                const pdfH = relH * scaleY;
+                
+                state.highlights.push({
+                    id: highlightId,
+                    pageNum: pageNum,
+                    color: color,
+                    // Display coordinates (for re-rendering)
+                    displayX: relX,
+                    displayY: adjustedY,
+                    displayW: relW,
+                    displayH: relH,
+                    // PDF coordinates (for saving)
+                    pdfX: pdfX,
+                    pdfY: pdfY,
+                    pdfW: pdfW,
+                    pdfH: pdfH,
+                    text: state.currentSelection.text
+                });
+            }
+            
+            hideColorTray();
+            selection.removeAllRanges();
+            state.currentSelection = null;
+            
+            markAsModified();
+            updateHighlightCount();
+            showToast(`Text highlighted in ${color}`, 'success');
+        }
+
+        function removeHighlightAtSelection() {
+            if (!state.currentSelection) {
+                showToast('Select a highlighted area to remove', 'warning');
+                hideColorTray();
+                return;
+            }
+            
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            const textLayerElement = range.startContainer.parentElement?.closest('.textLayer');
+            if (!textLayerElement) return;
+            
+            const pageWrapper = textLayerElement.closest('.page-wrapper');
+            const pageNum = parseInt(pageWrapper.id.replace('wrapper-', ''));
+            const highlightLayer = pageWrapper.querySelector('.highlightLayer');
+            
+            if (!highlightLayer) {
+                hideColorTray();
+                selection.removeAllRanges();
+                state.currentSelection = null;
+                return;
+            }
+            
+            const textLayerRect = textLayerElement.getBoundingClientRect();
+            const selectionRects = range.getClientRects();
+            
+            let removedCount = 0;
+            
+            // Find and remove highlights that overlap with selection
+            for (let i = 0; i < selectionRects.length; i++) {
+                const selRect = selectionRects[i];
+                const selX = selRect.left - textLayerRect.left;
+                const selY = selRect.top - textLayerRect.top;
+                
+                // Find overlapping highlights
+                const highlightsToRemove = state.highlights.filter(h => {
+                    if (h.pageNum !== pageNum) return false;
+                    
+                    // Check for overlap
+                    const overlapX = selX < (h.displayX + h.displayW) && (selX + selRect.width) > h.displayX;
+                    const overlapY = selY < (h.displayY + h.displayH) && (selY + selRect.height) > h.displayY;
+                    
+                    return overlapX && overlapY;
+                });
+                
+                highlightsToRemove.forEach(h => {
+                    // Remove from DOM
+                    const rectEl = highlightLayer.querySelector(`[data-highlight-id="${h.id}"]`);
+                    if (rectEl) rectEl.remove();
+                    
+                    // Remove from state
+                    const index = state.highlights.findIndex(sh => sh.id === h.id);
+                    if (index > -1) {
+                        state.highlights.splice(index, 1);
+                        removedCount++;
+                    }
+                });
+            }
+            
+            if (removedCount > 0) {
+                markAsModified();
+                updateHighlightCount();
+                showToast(`Removed ${removedCount} highlight${removedCount > 1 ? 's' : ''}`, 'info');
+            }
+            
+            hideColorTray();
+            selection.removeAllRanges();
+            state.currentSelection = null;
+        }
+
+        async function getPageInfo(pageNum) {
+            if (state.pageInfoCache[pageNum]) {
+                return state.pageInfoCache[pageNum];
+            }
+            
+            const page = await state.pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 1, rotation: state.rotation });
+            
+            state.pageInfoCache[pageNum] = {
+                width: viewport.width,
+                height: viewport.height
+            };
+            
+            return state.pageInfoCache[pageNum];
+        }
+
+        function reapplyHighlightsForPage(pageNum) {
+            const pageWrapper = document.getElementById(`wrapper-${pageNum}`);
+            if (!pageWrapper) return;
+            
+            const textLayerElement = pageWrapper.querySelector('.textLayer');
+            if (!textLayerElement) return;
+            
+            // Get or create highlight layer
+            let highlightLayer = pageWrapper.querySelector('.highlightLayer');
+            if (!highlightLayer) {
+                highlightLayer = document.createElement('div');
+                highlightLayer.className = 'highlightLayer';
+                pageWrapper.insertBefore(highlightLayer, textLayerElement);
+            } else {
+                // Clear existing highlights for this page
+                highlightLayer.innerHTML = '';
+            }
+            
+            // Re-render highlights for this page
+            const pageHighlights = state.highlights.filter(h => h.pageNum === pageNum);
+            
+            pageHighlights.forEach(h => {
+                const highlightRect = document.createElement('div');
+                highlightRect.className = `highlight-rect ${h.color}`;
+                highlightRect.dataset.highlightId = h.id;
+                highlightRect.style.cssText = `
+                    left: ${h.displayX}px;
+                    top: ${h.displayY}px;
+                    width: ${h.displayW}px;
+                    height: ${h.displayH}px;
+                `;
+                highlightLayer.appendChild(highlightRect);
+            });
+        }
+
+        function toggleHighlightMode() {
+            state.highlightMode = !state.highlightMode;
+            const btn = document.getElementById('highlightModeBtn');
+            btn.classList.toggle('active', state.highlightMode);
+            
+            showToast(state.highlightMode ? 'Highlight mode ON - Select text to highlight' : 'Highlight mode OFF', 'info');
+        }
+
+        function markAsModified() {
+            if (!state.isModified) {
+                state.isModified = true;
+                document.getElementById('statusIndicator').classList.add('modified');
+                document.getElementById('modifiedBadge').classList.remove('hidden');
+                document.getElementById('saveBtn').disabled = false;
+            }
+        }
+
+        function updateHighlightCount() {
+            const count = state.highlights.length;
+            document.getElementById('highlightCount').textContent = count > 0 ? `${count} highlight${count > 1 ? 's' : ''}` : '';
+        }
+
+        // ==================== SAVE SYSTEM ====================
+
+        function setupBeforeUnload() {
+            window.addEventListener('beforeunload', (e) => {
+                if (state.isModified) {
+                    e.preventDefault();
+                    e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+        }
+
+        function showSaveModal() {
+            document.getElementById('saveModal').classList.add('show');
+        }
+
+        function hideSaveModal() {
+            document.getElementById('saveModal').classList.remove('show');
+        }
+
+        function confirmSave() {
+            hideSaveModal();
+            savePDFWithHighlights();
+        }
+
+        function confirmDontSave() {
+            hideSaveModal();
+            state.isModified = false;
+            if (state.pendingClose) {
+                window.close();
+            }
+        }
+
+        async function savePDFWithHighlights() {
+            if (!state.pdfBytes) {
+                showToast('No PDF loaded', 'warning');
+                return;
+            }
+            
+            if (state.highlights.length === 0) {
+                showToast('No highlights to save', 'warning');
+                return;
+            }
+
+            showLoading(true, 'Saving PDF...', 'Adding highlights while preserving text');
+
+            try {
+                // Create a fresh copy of PDF bytes
+                const pdfBytesCopy = new Uint8Array(state.pdfBytes);
+                
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytesCopy, {
+                    ignoreEncryption: true,
+                    updateMetadata: false
+                });
+                
+                const pages = pdfDoc.getPages();
+
+                // Color mapping (RGB values 0-1)
+                const colors = {
+                    yellow: { r: 1, g: 0.92, b: 0.23 },
+                    green: { r: 0.3, g: 0.69, b: 0.31 },
+                    red: { r: 0.96, g: 0.26, b: 0.21 },
+                    pink: { r: 0.91, g: 0.12, b: 0.39 }
+                };
+
+                // Group highlights by page
+                const highlightsByPage = {};
+                state.highlights.forEach(h => {
+                    if (!highlightsByPage[h.pageNum]) {
+                        highlightsByPage[h.pageNum] = [];
+                    }
+                    highlightsByPage[h.pageNum].push(h);
+                });
+
+                // Add highlight rectangles to each page
+                for (const [pageNumStr, highlights] of Object.entries(highlightsByPage)) {
+                    const pageNum = parseInt(pageNumStr);
+                    const pageIndex = pageNum - 1;
+                    
+                    if (pageIndex < 0 || pageIndex >= pages.length) continue;
+                    
+                    const page = pages[pageIndex];
+                    
+                    for (const highlight of highlights) {
+                        const color = colors[highlight.color] || colors.yellow;
+                        
+                        // Draw semi-transparent rectangle
+                        page.drawRectangle({
+                            x: highlight.pdfX,
+                            y: highlight.pdfY,
+                            width: highlight.pdfW,
+                            height: highlight.pdfH,
+                            color: PDFLib.rgb(color.r, color.g, color.b),
+                            opacity: 0.4,
+                            borderWidth: 0
+                        });
+                    }
+                }
+
+                // Save the modified PDF
+                const modifiedPdfBytes = await pdfDoc.save({
+                    useObjectStreams: false,
+                    addDefaultPage: false,
+                    preserveEditability: true
+                });
+                
+                // Download the file
+                const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const baseName = state.fileName.replace(/\.pdf$/i, '');
+                a.download = `${baseName}_highlighted.pdf`;
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                // Reset modified state
+                state.isModified = false;
+                document.getElementById('statusIndicator').classList.remove('modified');
+                document.getElementById('modifiedBadge').classList.add('hidden');
+
+                showLoading(false);
+                showToast('PDF saved with highlights! Text remains searchable.', 'success');
+
+            } catch (error) {
+                console.error('Error saving PDF:', error);
+                showLoading(false);
+                showToast('Error saving PDF: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== TIMER SYSTEM ====================
+        
+        function setupTimerInputs() {
+            const inputs = ['timerHours', 'timerMinutes', 'timerSeconds'];
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                input.addEventListener('input', (e) => {
+                    let val = parseInt(e.target.value) || 0;
+                    const max = id === 'timerHours' ? 99 : 59;
+                    if (val > max) val = max;
+                    if (val < 0) val = 0;
+                    e.target.value = val.toString().padStart(2, '0');
+                });
+                input.addEventListener('focus', (e) => e.target.select());
+            });
+        }
+
+        function getTimerInputSeconds() {
+            const hours = parseInt(document.getElementById('timerHours').value) || 0;
+            const minutes = parseInt(document.getElementById('timerMinutes').value) || 0;
+            const seconds = parseInt(document.getElementById('timerSeconds').value) || 0;
+            return (hours * 3600) + (minutes * 60) + seconds;
+        }
+
+        function toggleTimer() {
+            if (state.timerRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            if (state.timerRunning) return;
+            
+            if (state.timerSeconds === 0) {
+                state.timerSeconds = getTimerInputSeconds();
+                state.timerInitialSeconds = state.timerSeconds;
+            }
+            
+            if (state.timerSeconds <= 0) {
+                showToast('Please set a timer value', 'warning');
+                return;
+            }
+            
+            state.timerRunning = true;
+            
+            document.getElementById('timerInputs').classList.add('hidden');
+            document.getElementById('timerDisplay').classList.remove('hidden');
+            document.getElementById('timerDisplay').classList.add('timer-running');
+            document.getElementById('timerDisplay').classList.remove('timer-finished');
+            
+            // Update button to pause state
+            const btn = document.getElementById('timerPlayPauseBtn');
+            const icon = document.getElementById('timerPlayPauseIcon');
+            btn.classList.remove('play');
+            btn.classList.add('pause');
+            btn.dataset.tooltip = 'Pause Timer';
+            icon.classList.remove('fa-play');
+            icon.classList.add('fa-pause');
+            
+            updateTimerDisplay();
+            
+            state.timerInterval = setInterval(() => {
+                state.timerSeconds--;
+                updateTimerDisplay();
+                
+                if (state.timerSeconds <= 0) {
+                    timerFinished();
+                }
+            }, 1000);
+            
+            showToast('Timer started!', 'success');
+        }
+
+        function pauseTimer() {
+            if (!state.timerRunning) return;
+            
+            state.timerRunning = false;
+            clearInterval(state.timerInterval);
+            
+            // Update button to play state
+            const btn = document.getElementById('timerPlayPauseBtn');
+            const icon = document.getElementById('timerPlayPauseIcon');
+            btn.classList.remove('pause');
+            btn.classList.add('play');
+            btn.dataset.tooltip = 'Start Timer';
+            icon.classList.remove('fa-pause');
+            icon.classList.add('fa-play');
+            
+            document.getElementById('timerDisplay').classList.remove('timer-running');
+            
+            showToast('Timer paused', 'info');
+        }
+
+        function resetTimer() {
+            state.timerRunning = false;
+            clearInterval(state.timerInterval);
+            state.timerSeconds = 0;
+            state.timerInitialSeconds = 0;
+            
+            document.getElementById('timerInputs').classList.remove('hidden');
+            document.getElementById('timerDisplay').classList.add('hidden');
+            document.getElementById('timerDisplay').classList.remove('timer-running', 'timer-finished');
+            
+            // Reset button to play state
+            const btn = document.getElementById('timerPlayPauseBtn');
+            const icon = document.getElementById('timerPlayPauseIcon');
+            btn.classList.remove('pause');
+            btn.classList.add('play');
+            btn.dataset.tooltip = 'Start Timer';
+            icon.classList.remove('fa-pause');
+            icon.classList.add('fa-play');
+            
+            document.getElementById('timerHours').value = '00';
+            document.getElementById('timerMinutes').value = '00';
+            document.getElementById('timerSeconds').value = '00';
+            document.getElementById('timerTime').textContent = '00:00:00';
+            
+            showToast('Timer reset', 'info');
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(state.timerSeconds / 3600);
+            const minutes = Math.floor((state.timerSeconds % 3600) / 60);
+            const seconds = state.timerSeconds % 60;
+            
+            const display = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timerTime').textContent = display;
+        }
+
+        function timerFinished() {
+            state.timerRunning = false;
+            clearInterval(state.timerInterval);
+            
+            document.getElementById('timerDisplay').classList.remove('timer-running');
+            document.getElementById('timerDisplay').classList.add('timer-finished');
+            
+            // Reset button to play state
+            const btn = document.getElementById('timerPlayPauseBtn');
+            const icon = document.getElementById('timerPlayPauseIcon');
+            btn.classList.remove('pause');
+            btn.classList.add('play');
+            btn.dataset.tooltip = 'Start Timer';
+            icon.classList.remove('fa-pause');
+            icon.classList.add('fa-play');
+            
+            document.getElementById('timerAlertModal').classList.add('show');
+            playTimerAlert();
+            showToast('⏰ Timer finished!', 'warning');
+            
+            if (Notification.permission === 'granted') {
+                new Notification('UN Chandra PDF Viewer', {
+                    body: 'Your timer has finished!',
+                    icon: '⏰'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        }
+
+        function playTimerAlert() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                
+                setTimeout(() => gainNode.gain.value = 0, 200);
+                setTimeout(() => gainNode.gain.value = 0.3, 300);
+                setTimeout(() => gainNode.gain.value = 0, 500);
+                setTimeout(() => gainNode.gain.value = 0.3, 600);
+                setTimeout(() => gainNode.gain.value = 0, 800);
+                setTimeout(() => {
+                    oscillator.stop();
+                    audioContext.close();
+                }, 900);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function closeTimerAlert() {
+            document.getElementById('timerAlertModal').classList.remove('show');
+        }
+
+        // ==================== REAL-TIME CLOCK ====================
+        
+        function startRealTimeClock() {
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            
+            const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('currentTime').textContent = formattedTime;
+            document.getElementById('ampm').textContent = ampm;
+            document.getElementById('statusBarTime').textContent = formattedTime;
+            document.getElementById('statusBarAmPm').textContent = ampm;
+        }
+
+        // ==================== THEME ====================
+        
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('pdfViewerTheme');
+            if (savedTheme === 'dark') {
+                state.isDarkMode = true;
+                document.body.classList.remove('light');
+                document.body.classList.add('dark');
+                document.getElementById('themeIcon').classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+
+        function toggleTheme() {
+            state.isDarkMode = !state.isDarkMode;
+            document.body.classList.toggle('dark');
+            document.body.classList.toggle('light');
+            
+            const icon = document.getElementById('themeIcon');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
+            
+            localStorage.setItem('pdfViewerTheme', state.isDarkMode ? 'dark' : 'light');
+            showToast(state.isDarkMode ? 'Dark mode enabled' : 'Light mode enabled', 'info');
+        }
+
+        // ==================== TOOLTIPS ====================
+        
+        function setupTooltips() {
+            const tooltip = document.getElementById('tooltip');
+            
+            document.querySelectorAll('[data-tooltip]').forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = e.target.closest('[data-tooltip]').dataset.tooltip;
+                    tooltip.classList.add('show');
+                    
+                    const rect = e.target.getBoundingClientRect();
+                    tooltip.style.left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2 + 'px';
+                    tooltip.style.top = rect.bottom + 6 + 'px';
+                });
+                
+                el.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('show');
+                });
+            });
+        }
+
+        // ==================== CONTEXT MENU ====================
+        
+        function setupContextMenu() {
+            const menu = document.getElementById('contextMenu');
+            
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('#pdfContainer')) {
+                    e.preventDefault();
+                    menu.style.left = e.clientX + 'px';
+                    menu.style.top = e.clientY + 'px';
+                    menu.classList.remove('hidden');
+                }
+            });
+            
+            document.addEventListener('click', () => {
+                menu.classList.add('hidden');
+            });
+        }
+
+        // ==================== DRAG AND DROP ====================
+        
+        function setupDragDrop() {
+            const dropZone = elements.dropZone;
+            const body = document.body;
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                body.addEventListener(eventName, () => {
+                    dropZone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                body.addEventListener(eventName, (e) => {
+                    if (!e.relatedTarget || !body.contains(e.relatedTarget)) {
+                        dropZone.classList.remove('dragover');
+                    }
+                }, false);
+            });
+
+            body.addEventListener('drop', handleDrop, false);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function handleDrop(e) {
+            elements.dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    loadPDFFile(file);
+                } else {
+                    showToast('Please drop a valid PDF file', 'error');
+                }
+            }
+        }
+
+        // ==================== FILE HANDLING ====================
+        
+        function openFile() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadPDFFile(file);
+            }
+            e.target.value = '';
+        }
+
+        async function loadPDFFile(file) {
+            const startTime = performance.now();
+            showLoading(true, 'Loading PDF...', file.name);
+            
+            state.fileName = file.name;
+            state.fileSize = file.size;
+            state.highlights = [];
+            state.isModified = false;
+            state.pageInfoCache = {};
+            
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('statusIndicator').classList.remove('modified');
+            document.getElementById('modifiedBadge').classList.add('hidden');
+            document.getElementById('saveBtn').disabled = true;
+            updateHighlightCount();
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                state.pdfBytes = new Uint8Array(arrayBuffer);
+                await loadPDF(state.pdfBytes, startTime);
+            } catch (error) {
+                console.error('Error reading file:', error);
+                showToast('Error reading file: ' + error.message, 'error');
+                showLoading(false);
+            }
+        }
+
+        async function loadPDF(data, startTime) {
+            try {
+                const pdfData = new Uint8Array(data);
+                const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+                
+                loadingTask.onProgress = (progress) => {
+                    if (progress.total > 0) {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        document.getElementById('loadingProgress').style.width = percent + '%';
+                    }
+                };
+
+                state.pdfDoc = await loadingTask.promise;
+                state.totalPages = state.pdfDoc.numPages;
+                state.currentPage = 1;
+                state.rotation = 0;
+                state.renderedPages.clear();
+
+                document.getElementById('totalPages').textContent = state.totalPages;
+                document.getElementById('pageInput').max = state.totalPages;
+                document.getElementById('pageInput').disabled = false;
+                document.getElementById('pageInput').value = 1;
+
+                enableControls();
+                
+                await renderAllPages();
+                await generateThumbnails();
+                await loadOutline();
+
+                elements.dropZone.classList.add('hidden');
+                elements.pdfContainer.classList.remove('hidden');
+                
+                const renderTime = Math.round(performance.now() - startTime);
+                document.getElementById('renderTime').textContent = `${renderTime}ms`;
+                document.getElementById('statusText').textContent = 'Ready';
+                
+                showLoading(false);
+                showToast(`Loaded: ${state.totalPages} pages`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                showToast('Error loading PDF: ' + error.message, 'error');
+                showLoading(false);
+            }
+        }
+
+        // ==================== PAGE RENDERING WITH TEXT LAYER ====================
+        
+        async function renderAllPages() {
+            elements.pagesWrapper.innerHTML = '';
+            
+            for (let i = 1; i <= state.totalPages; i++) {
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'page-container relative';
+                pageContainer.id = `page-${i}`;
+                pageContainer.dataset.page = i;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'page-wrapper relative';
+                wrapper.id = `wrapper-${i}`;
+                
+                const canvas = document.createElement('canvas');
+                canvas.className = 'page-canvas block';
+                canvas.id = `canvas-${i}`;
+                wrapper.appendChild(canvas);
+
+                // Highlight layer (between canvas and text layer)
+                const highlightLayer = document.createElement('div');
+                highlightLayer.className = 'highlightLayer';
+                highlightLayer.id = `highlightLayer-${i}`;
+                wrapper.appendChild(highlightLayer);
+
+                const textLayerDiv = document.createElement('div');
+                textLayerDiv.className = 'textLayer';
+                textLayerDiv.id = `textLayer-${i}`;
+                wrapper.appendChild(textLayerDiv);
+
+                const pageNum = document.createElement('div');
+                pageNum.className = 'absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-xs font-medium';
+                pageNum.style.cssText = 'background: rgba(0,0,0,0.7); color: white; z-index: 10;';
+                pageNum.textContent = `${i}`;
+                wrapper.appendChild(pageNum);
+
+                pageContainer.appendChild(wrapper);
+                elements.pagesWrapper.appendChild(pageContainer);
+            }
+
+            await renderVisiblePages();
+            updatePageSize();
+        }
+
+        async function renderVisiblePages() {
+            if (state.isRendering) return;
+            
+            const container = elements.pdfContainer;
+            const containerRect = container.getBoundingClientRect();
+            const buffer = 500;
+            
+            for (let i = 1; i <= state.totalPages; i++) {
+                const pageContainer = document.getElementById(`page-${i}`);
+                if (!pageContainer) continue;
+
+                const rect = pageContainer.getBoundingClientRect();
+                const isVisible = rect.bottom >= containerRect.top - buffer && 
+                                  rect.top <= containerRect.bottom + buffer;
+
+                if (isVisible && !state.renderedPages.has(i)) {
+                    await renderPage(i);
+                }
+            }
+        }
+
+        async function renderPage(pageNum) {
+            if (state.renderedPages.has(pageNum)) return;
+            
+            state.isRendering = true;
+            
+            try {
+                const canvas = document.getElementById(`canvas-${pageNum}`);
+                const textLayerDiv = document.getElementById(`textLayer-${pageNum}`);
+                if (!canvas || !textLayerDiv) return;
+
+                const page = await state.pdfDoc.getPage(pageNum);
+                const scale = state.scale * 1.5;
+                const viewport = page.getViewport({ scale: scale, rotation: state.rotation });
+
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                canvas.style.width = viewport.width / 1.5 + 'px';
+                canvas.style.height = viewport.height / 1.5 + 'px';
+
+                const ctx = canvas.getContext('2d');
+                
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+
+                await renderTextLayer(page, pageNum, viewport);
+
+                // Re-apply any existing highlights for this page
+                reapplyHighlightsForPage(pageNum);
+
+                state.renderedPages.add(pageNum);
+                
+            } catch (error) {
+                console.error(`Error rendering page ${pageNum}:`, error);
+            }
+            
+            state.isRendering = false;
+        }
+
+        async function renderTextLayer(page, pageNum, viewport) {
+            const textLayerDiv = document.getElementById(`textLayer-${pageNum}`);
+            if (!textLayerDiv) return;
+
+            textLayerDiv.innerHTML = '';
+
+            const textContent = await page.getTextContent();
+
+            const displayScale = state.scale;
+            textLayerDiv.style.width = viewport.width / 1.5 + 'px';
+            textLayerDiv.style.height = viewport.height / 1.5 + 'px';
+
+            const textScale = displayScale;
+
+            textContent.items.forEach((item, index) => {
+                if (!item.str || item.str.trim() === '') return;
+
+                const tx = item.transform;
+                const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
+                
+                const x = tx[4] * textScale;
+                const y = (viewport.height / 1.5) - (tx[5] * textScale) - (fontSize * textScale);
+
+                const span = document.createElement('span');
+                span.textContent = item.str;
+                span.dataset.index = index;
+                span.style.cssText = `
+                    left: ${x}px;
+                    top: ${y}px;
+                    font-size: ${fontSize * textScale}px;
+                    font-family: sans-serif;
+                    transform: scaleX(${tx[0] / fontSize});
+                `;
+
+                textLayerDiv.appendChild(span);
+            });
+        }
+
+        async function reRenderAllPages() {
+            state.renderedPages.clear();
+            clearSearchHighlights();
+            
+            // Store current highlights before re-render
+            const savedHighlights = [...state.highlights];
+            
+            for (let i = 1; i <= state.totalPages; i++) {
+                const canvas = document.getElementById(`canvas-${i}`);
+                const textLayerDiv = document.getElementById(`textLayer-${i}`);
+                const highlightLayer = document.getElementById(`highlightLayer-${i}`);
+                if (canvas) {
+                    canvas.width = 0;
+                    canvas.height = 0;
+                }
+                if (textLayerDiv) {
+                    textLayerDiv.innerHTML = '';
+                }
+                if (highlightLayer) {
+                    highlightLayer.innerHTML = '';
+                }
+            }
+            
+            // Clear page info cache as scale may have changed
+            state.pageInfoCache = {};
+            
+            await renderVisiblePages();
+            updatePageSize();
+            
+            // Recalculate highlight positions for new scale
+            // This requires re-selecting text which isn't practical,
+            // so highlights are cleared on zoom/rotation
+            if (savedHighlights.length > 0 && state.scale === 1) {
+                // Only restore if scale is 1 (original)
+                state.highlights = savedHighlights;
+                for (let i = 1; i <= state.totalPages; i++) {
+                    reapplyHighlightsForPage(i);
+                }
+            }
+        }
+
+        function updatePageSize() {
+            if (!state.pdfDoc) return;
+            
+            state.pdfDoc.getPage(state.currentPage).then(page => {
+                const viewport = page.getViewport({ scale: 1, rotation: state.rotation });
+                document.getElementById('pageSize').textContent = `${Math.round(viewport.width)} × ${Math.round(viewport.height)}`;
+            });
+        }
+
+        // ==================== SEARCH FUNCTIONALITY ====================
+        
+        function toggleSearch() {
+            const searchBox = document.getElementById('searchBox');
+            searchBox.classList.toggle('hidden');
+            
+            if (!searchBox.classList.contains('hidden')) {
+                document.getElementById('searchInput').focus();
+            }
+        }
+
+        function closeSearch() {
+            document.getElementById('searchBox').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').textContent = 'Enter search term';
+            
+            clearSearchHighlights();
+            
+            state.searchMatches = [];
+            state.currentMatchIndex = -1;
+            state.searchQuery = '';
+        }
+
+        function handleSearchKey(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            } else if (e.key === 'Escape') {
+                closeSearch();
+            }
+        }
+
+        function clearSearchHighlights() {
+            document.querySelectorAll('.textLayer span').forEach(span => {
+                const marks = span.querySelectorAll('.search-highlight');
+                if (marks.length > 0) {
+                    const originalText = span.textContent;
+                    span.textContent = originalText;
+                }
+            });
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query || !state.pdfDoc) return;
+            
+            clearSearchHighlights();
+            
+            state.searchMatches = [];
+            state.currentMatchIndex = -1;
+            state.searchQuery = query;
+
+            document.getElementById('searchResults').textContent = 'Searching...';
+
+            const queryLower = query.toLowerCase();
+
+            for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+                if (!state.renderedPages.has(pageNum)) {
+                    await renderPage(pageNum);
+                }
+
+                const textLayerDiv = document.getElementById(`textLayer-${pageNum}`);
+                if (!textLayerDiv) continue;
+
+                const spans = textLayerDiv.querySelectorAll('span');
+                
+                spans.forEach((span, spanIndex) => {
+                    const text = span.textContent;
+                    const textLower = text.toLowerCase();
+                    
+                    let startIndex = 0;
+                    while (true) {
+                        const matchIndex = textLower.indexOf(queryLower, startIndex);
+                        if (matchIndex === -1) break;
+
+                        state.searchMatches.push({
+                            pageNum: pageNum,
+                            spanElement: span,
+                            text: text,
+                            matchStart: matchIndex,
+                            matchEnd: matchIndex + query.length
+                        });
+
+                        startIndex = matchIndex + 1;
+                    }
+                });
+            }
+
+            highlightAllMatches();
+
+            if (state.searchMatches.length > 0) {
+                state.currentMatchIndex = 0;
+                updateCurrentHighlight();
+                goToPage(state.searchMatches[0].pageNum);
+                document.getElementById('searchResults').textContent = `1 of ${state.searchMatches.length} matches`;
+                showToast(`Found ${state.searchMatches.length} match${state.searchMatches.length > 1 ? 'es' : ''}`, 'success');
+            } else {
+                document.getElementById('searchResults').textContent = 'No results found';
+                showToast('No matches found', 'warning');
+            }
+        }
+
+        function highlightAllMatches() {
+            const matchesBySpan = new Map();
+            
+            state.searchMatches.forEach((match, index) => {
+                if (!matchesBySpan.has(match.spanElement)) {
+                    matchesBySpan.set(match.spanElement, []);
+                }
+                matchesBySpan.get(match.spanElement).push({ ...match, globalIndex: index });
+            });
+
+            matchesBySpan.forEach((matches, span) => {
+                const text = span.textContent;
+                let html = '';
+                let lastIndex = 0;
+
+                matches.sort((a, b) => a.matchStart - b.matchStart);
+
+                matches.forEach(match => {
+                    if (match.matchStart > lastIndex) {
+                        html += escapeHtml(text.substring(lastIndex, match.matchStart));
+                    }
+                    
+                    const matchText = text.substring(match.matchStart, match.matchEnd);
+                    html += `<mark class="search-highlight" data-match-index="${match.globalIndex}">${escapeHtml(matchText)}</mark>`;
+                    
+                    lastIndex = match.matchEnd;
+                });
+
+                if (lastIndex < text.length) {
+                    html += escapeHtml(text.substring(lastIndex));
+                }
+
+                span.innerHTML = html;
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateCurrentHighlight() {
+            document.querySelectorAll('.search-highlight.current').forEach(el => {
+                el.classList.remove('current');
+            });
+
+            if (state.currentMatchIndex >= 0 && state.currentMatchIndex < state.searchMatches.length) {
+                const match = state.searchMatches[state.currentMatchIndex];
+                const highlight = document.querySelector(`[data-match-index="${state.currentMatchIndex}"]`);
+                if (highlight) {
+                    highlight.classList.add('current');
+                    highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        function searchNext() {
+            if (state.searchMatches.length === 0) {
+                performSearch();
+                return;
+            }
+
+            state.currentMatchIndex = (state.currentMatchIndex + 1) % state.searchMatches.length;
+            const match = state.searchMatches[state.currentMatchIndex];
+            
+            goToPage(match.pageNum);
+            updateCurrentHighlight();
+            
+            document.getElementById('searchResults').textContent = `${state.currentMatchIndex + 1} of ${state.searchMatches.length} matches`;
+        }
+
+        function searchPrev() {
+            if (state.searchMatches.length === 0) {
+                performSearch();
+                return;
+            }
+
+            state.currentMatchIndex = (state.currentMatchIndex - 1 + state.searchMatches.length) % state.searchMatches.length;
+            const match = state.searchMatches[state.currentMatchIndex];
+            
+            goToPage(match.pageNum);
+            updateCurrentHighlight();
+            
+            document.getElementById('searchResults').textContent = `${state.currentMatchIndex + 1} of ${state.searchMatches.length} matches`;
+        }
+
+        // ==================== THUMBNAILS ====================
+        
+        async function generateThumbnails() {
+            elements.thumbnailsPanel.innerHTML = '';
+            
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 gap-2';
+            
+            for (let i = 1; i <= state.totalPages; i++) {
+                const thumbContainer = document.createElement('div');
+                thumbContainer.className = `thumbnail ${i === 1 ? 'active' : ''} p-1.5`;
+                thumbContainer.id = `thumb-${i}`;
+                thumbContainer.onclick = () => goToPage(i);
+                thumbContainer.style.background = 'var(--bg)';
+                
+                const canvas = document.createElement('canvas');
+                canvas.className = 'w-full rounded';
+                thumbContainer.appendChild(canvas);
+
+                const label = document.createElement('div');
+                label.className = 'text-center text-xs font-medium py-1 opacity-70';
+                label.textContent = i;
+                thumbContainer.appendChild(label);
+
+                grid.appendChild(thumbContainer);
+                renderThumbnail(i, canvas);
+            }
+            
+            elements.thumbnailsPanel.appendChild(grid);
+        }
+
+        async function renderThumbnail(pageNum, canvas) {
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 0.18, rotation: state.rotation });
+                
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                await page.render({
+                    canvasContext: canvas.getContext('2d'),
+                    viewport: viewport
+                }).promise;
+            } catch (error) {
+                console.error(`Error rendering thumbnail ${pageNum}:`, error);
+            }
+        }
+
+        // ==================== OUTLINE ====================
+        
+        async function loadOutline() {
+            const outlinePanel = document.getElementById('outlinePanel');
+            
+            try {
+                const outline = await state.pdfDoc.getOutline();
+                
+                if (outline && outline.length > 0) {
+                    outlinePanel.innerHTML = '';
+                    const list = document.createElement('div');
+                    list.className = 'space-y-0.5';
+                    renderOutlineItems(outline, list, 0);
+                    outlinePanel.appendChild(list);
+                }
+            } catch (e) {
+                console.error('Error loading outline:', e);
+            }
+        }
+
+        function renderOutlineItems(items, container, level) {
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'py-1.5 px-2 rounded cursor-pointer hover:bg-blue-500 hover:text-white text-xs transition-all';
+                div.style.paddingLeft = (8 + level * 12) + 'px';
+                div.textContent = item.title;
+                
+                div.onclick = async () => {
+                    if (item.dest) {
+                        try {
+                            const dest = typeof item.dest === 'string' 
+                                ? await state.pdfDoc.getDestination(item.dest) 
+                                : item.dest;
+                            if (dest) {
+                                const pageIndex = await state.pdfDoc.getPageIndex(dest[0]);
+                                goToPage(pageIndex + 1);
+                            }
+                        } catch (e) {}
+                    }
+                };
+                
+                container.appendChild(div);
+
+                if (item.items && item.items.length > 0) {
+                    renderOutlineItems(item.items, container, level + 1);
+                }
+            });
+        }
+
+        // ==================== NAVIGATION ====================
+        
+        function goToPage(num) {
+            num = parseInt(num);
+            if (isNaN(num) || num < 1 || num > state.totalPages || !state.pdfDoc) return;
+
+            state.currentPage = num;
+            document.getElementById('pageInput').value = num;
+            updateNavigationButtons();
+
+            const pageElement = document.getElementById(`page-${num}`);
+            if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            updateActiveThumbnail();
+            updatePageSize();
+            document.getElementById('statusText').textContent = `Page ${num} of ${state.totalPages}`;
+        }
+
+        function handlePageInputKey(e) {
+            if (e.key === 'Enter') {
+                goToPage(e.target.value);
+                e.target.blur();
+            }
+        }
+
+        function prevPage() {
+            if (state.currentPage > 1) goToPage(state.currentPage - 1);
+        }
+
+        function nextPage() {
+            if (state.currentPage < state.totalPages) goToPage(state.currentPage + 1);
+        }
+
+        function firstPage() {
+            goToPage(1);
+        }
+
+        function lastPage() {
+            goToPage(state.totalPages);
+        }
+
+        function updateNavigationButtons() {
+            document.getElementById('prevBtn').disabled = state.currentPage <= 1;
+            document.getElementById('firstPageBtn').disabled = state.currentPage <= 1;
+            document.getElementById('nextBtn').disabled = state.currentPage >= state.totalPages;
+            document.getElementById('lastPageBtn').disabled = state.currentPage >= state.totalPages;
+        }
+
+        function updateActiveThumbnail() {
+            document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+            const activeThumb = document.getElementById(`thumb-${state.currentPage}`);
+            if (activeThumb) {
+                activeThumb.classList.add('active');
+                activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // ==================== SCROLL HANDLER ====================
+        
+        let scrollTimeout;
+        function handleScroll() {
+            if (!state.pdfDoc) return;
+
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const container = elements.pdfContainer;
+                const containerRect = container.getBoundingClientRect();
+                const containerTop = containerRect.top + 60;
+
+                for (let i = 1; i <= state.totalPages; i++) {
+                    const pageEl = document.getElementById(`page-${i}`);
+                    if (pageEl) {
+                        const rect = pageEl.getBoundingClientRect();
+                        if (rect.top <= containerTop && rect.bottom > containerTop) {
+                            if (state.currentPage !== i) {
+                                state.currentPage = i;
+                                document.getElementById('pageInput').value = i;
+                                updateNavigationButtons();
+                                updateActiveThumbnail();
+                                document.getElementById('statusText').textContent = `Page ${i} of ${state.totalPages}`;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                renderVisiblePages();
+            }, 50);
+        }
+
+        // ==================== ZOOM ====================
+        
+        function zoomIn() {
+            if (state.scale < 4) setZoom(Math.min(4, state.scale + 0.25));
+        }
+
+        function zoomOut() {
+            if (state.scale > 0.25) setZoom(Math.max(0.25, state.scale - 0.25));
+        }
+
+        async function setZoom(newScale) {
+            // Warn about highlights being cleared
+            if (state.highlights.length > 0 && newScale !== state.scale) {
+                state.highlights = [];
+                updateHighlightCount();
+                if (state.isModified) {
+                    showToast('Highlights cleared due to zoom change', 'warning');
+                }
+            }
+            
+            state.scale = newScale;
+            document.getElementById('zoomLevel').textContent = Math.round(newScale * 100) + '%';
+            closeAllDropdowns();
+            await reRenderAllPages();
+            
+            if (state.searchQuery && state.searchMatches.length > 0) {
+                await performSearch();
+            }
+        }
+
+        async function fitToPage() {
+            if (!state.pdfDoc) return;
+            
+            const page = await state.pdfDoc.getPage(state.currentPage);
+            const viewport = page.getViewport({ scale: 1, rotation: state.rotation });
+            const container = elements.pdfContainer;
+            
+            const scaleX = (container.clientWidth - 40) / viewport.width;
+            const scaleY = (container.clientHeight - 40) / viewport.height;
+            
+            setZoom(Math.min(scaleX, scaleY));
+        }
+
+        async function fitToWidth() {
+            if (!state.pdfDoc) return;
+            
+            const page = await state.pdfDoc.getPage(state.currentPage);
+            const viewport = page.getViewport({ scale: 1, rotation: state.rotation });
+            const container = elements.pdfContainer;
+            
+            setZoom((container.clientWidth - 40) / viewport.width);
+        }
+
+        // ==================== ROTATION ====================
+        
+        async function rotatePage(degrees) {
+            // Clear highlights on rotation
+            if (state.highlights.length > 0) {
+                state.highlights = [];
+                updateHighlightCount();
+                showToast('Highlights cleared due to rotation', 'warning');
+            }
+            
+            state.rotation = (state.rotation + degrees + 360) % 360;
+            state.pageInfoCache = {};
+            await reRenderAllPages();
+            await generateThumbnails();
+            showToast(`Rotated ${degrees > 0 ? 'right' : 'left'}`, 'info');
+        }
+
+        // ==================== SIDEBAR ====================
+        
+        function toggleSidebar() {
+            state.sidebarVisible = !state.sidebarVisible;
+            const sidebar = elements.sidebar;
+            
+            sidebar.style.width = state.sidebarVisible ? '208px' : '0';
+            sidebar.style.minWidth = state.sidebarVisible ? '208px' : '0';
+            
+            document.getElementById('sidebarBtn').classList.toggle('active', state.sidebarVisible);
+        }
+
+        function switchTab(tab) {
+            const tabs = ['thumbnails', 'outline'];
+            
+            tabs.forEach(t => {
+                document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.toggle('active', t === tab);
+                document.getElementById(`${t}Panel`).classList.toggle('hidden', t !== tab);
+            });
+        }
+
+        // ==================== FULLSCREEN ====================
+        
+        function toggleFullscreen() {
+            const icon = document.getElementById('fullscreenIcon');
+            
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => {
+                    icon.classList.replace('fa-expand', 'fa-compress');
+                }).catch(() => {});
+            } else {
+                document.exitFullscreen().then(() => {
+                    icon.classList.replace('fa-compress', 'fa-expand');
+                });
+            }
+        }
+
+        // ==================== PRINT & DOWNLOAD ====================
+        
+        function printPDF() {
+            if (!state.pdfBytes) return;
+            
+            const blob = new Blob([state.pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const printWindow = window.open(url, '_blank');
+            
+            if (printWindow) {
+                printWindow.addEventListener('load', () => {
+                    setTimeout(() => printWindow.print(), 250);
+                });
+            }
+        }
+
+        function downloadPDF() {
+            if (!state.pdfBytes) return;
+            
+            const blob = new Blob([state.pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = state.fileName || 'document.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('Download started', 'success');
+        }
+
+        // ==================== DROPDOWNS ====================
+        
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            const isOpen = dropdown.classList.contains('show');
+            closeAllDropdowns();
+            if (!isOpen) dropdown.classList.add('show');
+        }
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown') && !e.target.closest('[onclick*="toggleDropdown"]')) {
+                closeAllDropdowns();
+            }
+        });
+
+        // ==================== MODALS ====================
+        
+        function showHelp() {
+            document.getElementById('helpModal').classList.add('show');
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('show');
+        }
+
+        function closeModal(e, id) {
+            if (e.target.id === id) {
+                document.getElementById(id).classList.remove('show');
+            }
+        }
+
+        // ==================== KEYBOARD SHORTCUTS ====================
+        
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
+                    if (e.key === 'Escape') e.target.blur();
+                    return;
+                }
+
+                const ctrl = e.ctrlKey || e.metaKey;
+
+                if (ctrl) {
+                    switch (e.key.toLowerCase()) {
+                        case 'o': e.preventDefault(); openFile(); break;
+                        case 's': e.preventDefault(); if (state.pdfDoc && state.isModified) savePDFWithHighlights(); break;
+                        case 'p': e.preventDefault(); if (state.pdfDoc) printPDF(); break;
+                        case 'f': e.preventDefault(); if (state.pdfDoc) toggleSearch(); break;
+                        case 'b': e.preventDefault(); toggleSidebar(); break;
+                        case 'd': e.preventDefault(); toggleTheme(); break;
+                        case '=':
+                        case '+': e.preventDefault(); if (state.pdfDoc) zoomIn(); break;
+                        case '-': e.preventDefault(); if (state.pdfDoc) zoomOut(); break;
+                        case '0': e.preventDefault(); if (state.pdfDoc) setZoom(1); break;
+                        case 't': 
+                            e.preventDefault(); 
+                            if (e.shiftKey) {
+                                resetTimer();
+                            } else {
+                                toggleTimer();
+                            }
+                            break;
+                    }
+                } else {
+                    switch (e.key) {
+                        case 'h':
+                        case 'H':
+                            if (state.pdfDoc) toggleHighlightMode();
+                            break;
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            if (state.pdfDoc) { e.preventDefault(); prevPage(); }
+                            break;
+                        case 'ArrowRight':
+                        case 'PageDown':
+                            if (state.pdfDoc) { e.preventDefault(); nextPage(); }
+                            break;
+                        case 'Home':
+                            if (state.pdfDoc) { e.preventDefault(); firstPage(); }
+                            break;
+                        case 'End':
+                            if (state.pdfDoc) { e.preventDefault(); lastPage(); }
+                            break;
+                        case 'F11':
+                            e.preventDefault();
+                            toggleFullscreen();
+                            break;
+                        case 'Escape':
+                            closeAllDropdowns();
+                            closeSearch();
+                            closeHelp();
+                            closeTimerAlert();
+                            hideColorTray();
+                            hideSaveModal();
+                            break;
+                        case '?':
+                            showHelp();
+                            break;
+                    }
+                }
+            });
+        }
+
+        // ==================== ENABLE CONTROLS ====================
+        
+        function enableControls() {
+            ['zoomBtn', 'zoomInBtn', 'zoomOutBtn',
+             'prevBtn', 'nextBtn', 'firstPageBtn', 'lastPageBtn',
+             'rotateLeftBtn', 'rotateRightBtn', 'searchToggle', 'highlightModeBtn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
+            });
+            updateNavigationButtons();
+        }
+
+        // ==================== LOADING ====================
+        
+        function showLoading(show, text = 'Loading...', subtext = '') {
+            const loader = elements.loadingIndicator;
+            
+            if (show) {
+                loader.classList.remove('hidden');
+                document.getElementById('loadingText').textContent = text;
+                document.getElementById('loadingSubtext').textContent = subtext;
+                document.getElementById('loadingProgress').style.width = '0%';
+            } else {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // ==================== TOAST ====================
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'from-emerald-500 to-green-600',
+                error: 'from-red-500 to-rose-600',
+                info: 'from-blue-500 to-indigo-600',
+                warning: 'from-amber-500 to-orange-600'
+            };
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-times-circle',
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-circle'
+            };
+
+            toast.className = `toast flex items-center gap-3 px-5 py-3 rounded-xl text-white text-sm shadow-xl bg-gradient-to-r ${colors[type]}`;
+            toast.innerHTML = `
+                <i class="fas ${icons[type]} text-lg"></i>
+                <span class="font-medium">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // ==================== UTILITIES ====================
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        window.addEventListener('resize', () => {
+            if (state.pdfDoc) {
+                clearTimeout(window.resizeTimer);
+                window.resizeTimer = setTimeout(reRenderAllPages, 250);
+            }
+        });
+    </script>
+</body>
+</html>
