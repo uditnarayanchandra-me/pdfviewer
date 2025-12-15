@@ -741,6 +741,28 @@
             background: var(--hover);
         }
 
+        /* Zoom indicator */
+        .zoom-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .zoom-indicator.show {
+            opacity: 1;
+        }
+
         :fullscreen {
             background: var(--bg);
         }
@@ -837,7 +859,7 @@
                 </button>
                 
                 <div class="relative">
-                    <button onclick="toggleDropdown('zoomDropdown')" class="toolbar-btn px-2" style="width: auto;" data-tooltip="Zoom" id="zoomBtn" disabled>
+                    <button onclick="toggleDropdown('zoomDropdown')" class="toolbar-btn px-2" style="width: auto;" data-tooltip="Zoom (Ctrl+Scroll)" id="zoomBtn" disabled>
                         <span id="zoomLevel" class="text-xs font-semibold">100%</span>
                     </button>
                     <div id="zoomDropdown" class="dropdown">
@@ -1009,7 +1031,7 @@
                         <div class="mt-6 flex items-center justify-center gap-6 text-xs opacity-50">
                             <span class="flex items-center gap-1"><i class="fas fa-highlighter"></i>Highlight</span>
                             <span class="flex items-center gap-1"><i class="fas fa-save"></i>Save</span>
-                            <span class="flex items-center gap-1"><i class="fas fa-bolt"></i>Fast</span>
+                            <span class="flex items-center gap-1"><i class="fas fa-search-plus"></i>Ctrl+Scroll Zoom</span>
                         </div>
                     </div>
                 </div>
@@ -1059,6 +1081,9 @@
             </div>
         </footer>
     </div>
+
+    <!-- Zoom Indicator -->
+    <div id="zoomIndicator" class="zoom-indicator">100%</div>
 
     <!-- Color Tray for Highlighting -->
     <div id="colorTray" class="color-tray">
@@ -1145,6 +1170,7 @@
                 <div>
                     <h4 class="font-semibold text-xs opacity-50 uppercase mb-2">View</h4>
                     <div class="space-y-1.5">
+                        <div class="flex justify-between py-1.5"><span>Zoom at cursor</span><kbd class="kbd">Ctrl+Scroll</kbd></div>
                         <div class="flex justify-between py-1.5"><span>Zoom in/out</span><kbd class="kbd">Ctrl +/-</kbd></div>
                         <div class="flex justify-between py-1.5"><span>Reset zoom</span><kbd class="kbd">Ctrl+0</kbd></div>
                         <div class="flex justify-between py-1.5"><span>Fullscreen</span><kbd class="kbd">F11</kbd></div>
@@ -1223,7 +1249,11 @@
             highlightMode: false,
             currentSelection: null,
             pendingClose: false,
-            pageInfoCache: {}
+            pageInfoCache: {},
+            // Wheel zoom state
+            isWheelZooming: false,
+            wheelZoomTimeout: null,
+            zoomIndicatorTimeout: null
         };
 
         // DOM Elements
@@ -1235,7 +1265,8 @@
             thumbnailsPanel: document.getElementById('thumbnailsPanel'),
             loadingIndicator: document.getElementById('loadingIndicator'),
             sidebar: document.getElementById('sidebar'),
-            colorTray: document.getElementById('colorTray')
+            colorTray: document.getElementById('colorTray'),
+            zoomIndicator: document.getElementById('zoomIndicator')
         };
 
         // Initialize
@@ -1251,6 +1282,99 @@
             loadThemePreference();
             startRealTimeClock();
             setupTimerInputs();
+            setupWheelZoom();
+        }
+
+        // ==================== WHEEL ZOOM (CURSOR FOCUS) ====================
+
+        function setupWheelZoom() {
+            const container = elements.pdfContainer;
+            
+            container.addEventListener('wheel', (e) => {
+                // Check if Ctrl/Cmd key is pressed for zoom
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (!state.pdfDoc) return;
+                    
+                    // Get mouse position relative to container
+                    const containerRect = container.getBoundingClientRect();
+                    const mouseX = e.clientX - containerRect.left;
+                    const mouseY = e.clientY - containerRect.top;
+                    
+                    // Current scroll position
+                    const scrollLeft = container.scrollLeft;
+                    const scrollTop = container.scrollTop;
+                    
+                    // Point in content coordinate (before zoom)
+                    const contentX = scrollLeft + mouseX;
+                    const contentY = scrollTop + mouseY;
+                    
+                    // Calculate new scale
+                    const oldScale = state.scale;
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1; // 10% zoom per scroll
+                    let newScale = oldScale * zoomFactor;
+                    
+                    // Clamp scale between 0.25 and 4
+                    newScale = Math.max(0.25, Math.min(4, newScale));
+                    
+                    // Round to avoid floating point issues
+                    newScale = Math.round(newScale * 100) / 100;
+                    
+                    if (newScale === oldScale) return;
+                    
+                    const scaleRatio = newScale / oldScale;
+                    
+                    // Update state
+                    state.scale = newScale;
+                    document.getElementById('zoomLevel').textContent = Math.round(newScale * 100) + '%';
+                    
+                    // Show zoom indicator
+                    showZoomIndicator(Math.round(newScale * 100) + '%');
+                    
+                    // Clear highlights on zoom (as positions change)
+                    if (state.highlights.length > 0) {
+                        state.highlights = [];
+                        updateHighlightCount();
+                    }
+                    
+                    // Debounced re-render with scroll position adjustment
+                    clearTimeout(state.wheelZoomTimeout);
+                    state.isWheelZooming = true;
+                    
+                    state.wheelZoomTimeout = setTimeout(async () => {
+                        await reRenderAllPages();
+                        
+                        // Calculate new scroll position to keep cursor point fixed
+                        const newContentX = contentX * scaleRatio;
+                        const newContentY = contentY * scaleRatio;
+                        
+                        container.scrollLeft = newContentX - mouseX;
+                        container.scrollTop = newContentY - mouseY;
+                        
+                        state.isWheelZooming = false;
+                    }, 100);
+                }
+            }, { passive: false });
+            
+            // Prevent browser default zoom on the whole document
+            document.addEventListener('wheel', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.target.closest('#pdfContainer')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        function showZoomIndicator(text) {
+            const indicator = elements.zoomIndicator;
+            indicator.textContent = text;
+            indicator.classList.add('show');
+            
+            clearTimeout(state.zoomIndicatorTimeout);
+            state.zoomIndicatorTimeout = setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 800);
         }
 
         // ==================== HIGHLIGHTING SYSTEM (OVERLAY APPROACH) ====================
@@ -2692,6 +2816,7 @@
             state.scale = newScale;
             document.getElementById('zoomLevel').textContent = Math.round(newScale * 100) + '%';
             closeAllDropdowns();
+            showZoomIndicator(Math.round(newScale * 100) + '%');
             await reRenderAllPages();
             
             if (state.searchQuery && state.searchMatches.length > 0) {
