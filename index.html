@@ -1187,11 +1187,11 @@
 
     <!-- Timer Alert Modal -->
     <div id="timerAlertModal" class="modal-overlay" onclick="closeTimerAlert()">
-        <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-content text-center flex flex-col items-center justify-center" onclick="event.stopPropagation()">
             <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center animate-pulse">
                 <i class="fas fa-bell text-3xl text-white"></i>
             </div>
-            <h3 class="text-2xl font-bold mb-2">⏰ Time's Up!</h3>
+            <h3 class="text-2xl font-bold mb-2">Time's Up!</h3>
             <p class="text-base opacity-60 mb-6">Your countdown timer has finished.</p>
             <button onclick="closeTimerAlert()" class="premium-btn">
                 OK, Got it!
@@ -1201,7 +1201,7 @@
 
     <!-- Save Confirmation Modal -->
     <div id="saveModal" class="modal-overlay" onclick="event.stopPropagation()">
-        <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-content text-center flex flex-col items-center justify-center" onclick="event.stopPropagation()">
             <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                 <i class="fas fa-exclamation-triangle text-3xl text-white"></i>
             </div>
@@ -1974,6 +1974,7 @@
         function playTimerBellAudio() {
             const audio = document.getElementById('timerBellAudio');
             audio.currentTime = 0;
+            audio.loop = true;
             audio.play().catch(err => {
                 console.log('Audio playback failed:', err);
                 // Fallback to beep if audio fails
@@ -2011,6 +2012,12 @@
         }
 
         function closeTimerAlert() {
+            const audio = document.getElementById('timerBellAudio');
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.loop = false;
+            }
             document.getElementById('timerAlertModal').classList.remove('show');
         }
 
@@ -3134,4 +3141,3 @@
     </script>
 </body>
 </html>
-        
