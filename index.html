@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UN Chandra PDF Viewer</title>
+    <title>PW PDF Viewer</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1p70xXMkP8-8evEdI_VNh0t7Isad8iM_3">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -803,7 +803,7 @@
                     <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
                         <i class="fas fa-file-pdf text-white text-xs"></i>
                     </div>
-                    <span class="font-bold text-sm hide-md">UN Chandra</span>
+                    <span class="font-bold text-sm hide-md">Physics Wallah</span>
                 </div>
                 
                 <button onclick="openFile()" class="toolbar-btn" data-tooltip="Open PDF (Ctrl+O)">
@@ -1016,8 +1016,8 @@
                             <i class="fas fa-file-pdf text-5xl text-white"></i>
                         </div>
                         
-                        <h2 class="text-2xl font-bold mb-2">Welcome to Udit Narayan Chandra PDF Viewer</h2>
-                        <p class="text-base opacity-60 mb-6">Open, view, highlight and navigate your PDF documents with ease</p>
+                        <h2 class="text-2xl font-bold mb-2">PW PDF Viewer</h2>
+                        <p class="text-base opacity-60 mb-6">Specially designed for Students for Time Management and for Mock Test from PDF.</p>
                         
                         <button onclick="openFile()" class="premium-btn">
                             <i class="fas fa-folder-open mr-2"></i>Open PDF File
@@ -1180,7 +1180,7 @@
             </div>
             
             <div class="mt-6 pt-4 border-t text-center text-xs opacity-50" style="border-color: var(--border);">
-                UN Chandra PDF Viewer v2.1 - Highlighting & Save Enabled
+               PW PDF Viewer v2.1 - Highlighting & Save Enabled
             </div>
         </div>
     </div>
@@ -1962,7 +1962,7 @@
             showToast('⏰ Timer finished!', 'warning');
             
             if (Notification.permission === 'granted') {
-                new Notification('UN Chandra PDF Viewer', {
+                new Notification('Udit Narayan Chandra', {
                     body: 'Your timer has finished!',
                     icon: '⏰'
                 });
