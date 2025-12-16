@@ -803,7 +803,7 @@
                     <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
                         <i class="fas fa-file-pdf text-white text-xs"></i>
                     </div>
-                    <span class="font-bold text-sm hide-md">UN Chandra PDF Viewer</span>
+                    <span class="font-bold text-sm hide-md">UN Chandra</span>
                 </div>
                 
                 <button onclick="openFile()" class="toolbar-btn" data-tooltip="Open PDF (Ctrl+O)">
@@ -1217,6 +1217,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Audio Element for Timer Bell -->
+    <audio id="timerBellAudio" preload="auto">
+        <source src="https://uditnarayanchandra-me.github.io/bellaudio/temple_bell.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         // Configure PDF.js worker
@@ -1950,8 +1955,10 @@
             icon.classList.remove('fa-pause');
             icon.classList.add('fa-play');
             
+            // Play temple bell audio
+            playTimerBellAudio();
+            
             document.getElementById('timerAlertModal').classList.add('show');
-            playTimerAlert();
             showToast('⏰ Timer finished!', 'warning');
             
             if (Notification.permission === 'granted') {
@@ -1962,6 +1969,16 @@
             } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission();
             }
+        }
+
+        function playTimerBellAudio() {
+            const audio = document.getElementById('timerBellAudio');
+            audio.currentTime = 0;
+            audio.play().catch(err => {
+                console.log('Audio playback failed:', err);
+                // Fallback to beep if audio fails
+                playTimerAlert();
+            });
         }
 
         function playTimerAlert() {
@@ -2417,7 +2434,6 @@
         }
 
         // ==================== SEARCH FUNCTIONALITY ====================
-        
         function toggleSearch() {
             const searchBox = document.getElementById('searchBox');
             searchBox.classList.toggle('hidden');
@@ -3118,3 +3134,4 @@
     </script>
 </body>
 </html>
+        
