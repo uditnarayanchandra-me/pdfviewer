@@ -791,7 +791,200 @@
             #sidebar { position: absolute; z-index: 100; left: 0; }
             #sidebar.collapsed { transform: translateX(-100%); }
         }
-    </style>
+    
+        /* Scientific Calculator Popup - Compact & Wide */
+        .calculator-popup {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 10000;
+            width: 340px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .calculator-popup.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+
+        .calc-header {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .calc-display {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            min-height: 40px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+
+        .calc-btn {
+            padding: 6px 4px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            background: var(--surface);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+        }
+
+        .calc-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .calc-btn:active {
+            transform: scale(0.95);
+        }
+
+        .calc-btn.operator {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            font-weight: 700;
+        }
+
+        .calc-btn.function {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            font-size: 10px;
+        }
+
+        .calc-btn.clear {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-weight: 700;
+        }
+
+        .calc-btn.equals {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            font-weight: 700;
+            grid-column: span 2;
+        }
+
+        /* Video Popup Styles */
+        .video-popup {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            z-index: 10000;
+            min-width: 280px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .video-popup.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .video-time-input {
+            width: 50px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .video-time-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .video-speed-input {
+            width: 100px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .video-speed-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .video-popup-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .video-section {
+            margin-bottom: 12px;
+        }
+
+        .video-label {
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.7;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+</style>
 </head>
 <body class="light">
     <div id="app" class="flex flex-col h-screen">
@@ -821,9 +1014,14 @@
 
                 <div class="divider"></div>
 
-                <!-- Highlight Mode Toggle -->
-                <button onclick="toggleHighlightMode()" class="toolbar-btn" data-tooltip="Highlight Mode (H)" id="highlightModeBtn" disabled>
-                    <i class="fas fa-highlighter"></i>
+                <!-- Scientific Calculator -->
+                <button onclick="toggleCalculator()" class="toolbar-btn" data-tooltip="Scientific Calculator (Numpad)" id="calculatorBtn">
+                    <i class="fas fa-calculator"></i>
+                </button>
+
+                <!-- Video Speed Control -->
+                <button onclick="toggleVideoPopup()" class="toolbar-btn" data-tooltip="Video Timer" id="videoBtn">
+                    <i class="fas fa-video"></i>
                 </button>
             </div>
 
@@ -1097,6 +1295,107 @@
         </button>
     </div>
 
+    <!-- Scientific Calculator Popup -->
+    <div id="calculatorPopup" class="calculator-popup">
+        <div class="calc-header">
+            <i class="fas fa-calculator text-blue-500"></i>
+            <span>Scientific Calculator</span>
+            <span style="margin-left: auto; font-size: 10px; opacity: 0.6;">[Numpad Enabled]</span>
+        </div>
+
+        <div id="calcDisplay" class="calc-display">0</div>
+
+        <div class="calc-buttons">
+            <!-- Row 1 - Functions -->
+            <button class="calc-btn function" onclick="calcFunction('sin')">sin</button>
+            <button class="calc-btn function" onclick="calcFunction('cos')">cos</button>
+            <button class="calc-btn function" onclick="calcFunction('tan')">tan</button>
+            <button class="calc-btn function" onclick="calcFunction('log')">log</button>
+
+            <!-- Row 2 - Functions -->
+            <button class="calc-btn function" onclick="calcFunction('ln')">ln</button>
+            <button class="calc-btn function" onclick="calcFunction('sqrt')">√</button>
+            <button class="calc-btn function" onclick="calcFunction('square')">x²</button>
+            <button class="calc-btn function" onclick="calcFunction('power')">xʸ</button>
+
+            <!-- Row 3 - Special -->
+            <button class="calc-btn clear" onclick="calcClear()">AC</button>
+            <button class="calc-btn" onclick="calcBackspace()">⌫</button>
+            <button class="calc-btn" onclick="calcAppend('(')">(</button>
+            <button class="calc-btn" onclick="calcAppend(')')">)</button>
+
+            <!-- Row 4 -->
+            <button class="calc-btn" onclick="calcAppend('7')">7</button>
+            <button class="calc-btn" onclick="calcAppend('8')">8</button>
+            <button class="calc-btn" onclick="calcAppend('9')">9</button>
+            <button class="calc-btn operator" onclick="calcAppend('/')">÷</button>
+
+            <!-- Row 5 -->
+            <button class="calc-btn" onclick="calcAppend('4')">4</button>
+            <button class="calc-btn" onclick="calcAppend('5')">5</button>
+            <button class="calc-btn" onclick="calcAppend('6')">6</button>
+            <button class="calc-btn operator" onclick="calcAppend('*')">×</button>
+
+            <!-- Row 6 -->
+            <button class="calc-btn" onclick="calcAppend('1')">1</button>
+            <button class="calc-btn" onclick="calcAppend('2')">2</button>
+            <button class="calc-btn" onclick="calcAppend('3')">3</button>
+            <button class="calc-btn operator" onclick="calcAppend('-')">−</button>
+
+            <!-- Row 7 -->
+            <button class="calc-btn" onclick="calcAppend('0')">0</button>
+            <button class="calc-btn" onclick="calcAppend('.')">.</button>
+            <button class="calc-btn function" onclick="calcAppend('Math.PI')">π</button>
+            <button class="calc-btn operator" onclick="calcAppend('+')">+</button>
+
+            <!-- Row 8 -->
+            <button class="calc-btn equals" onclick="calcCalculate()">=</button>
+            <button class="calc-btn" onclick="calcToggleSign()">+/−</button>
+            <button class="calc-btn clear" onclick="calcClearEntry()">C</button>
+        </div>
+    </div>
+
+    <!-- Video Speed Control Popup -->
+    <div id="videoPopup" class="video-popup">
+        <div class="video-popup-header">
+            <i class="fas fa-video text-blue-500"></i>
+            <span>Video Time Tracker</span>
+        </div>
+
+        <div class="video-section">
+            <div class="video-label">Video Time (HH:MM:SS)</div>
+            <div class="flex items-center gap-2 justify-center">
+                <input type="number" id="videoHours" class="video-time-input" value="00" min="0" max="23" placeholder="HH">
+                <span class="text-lg font-bold opacity-40">:</span>
+                <input type="number" id="videoMinutes" class="video-time-input" value="00" min="0" max="59" placeholder="MM">
+                <span class="text-lg font-bold opacity-40">:</span>
+                <input type="number" id="videoSeconds" class="video-time-input" value="00" min="0" max="59" placeholder="SS">
+            </div>
+        </div>
+
+        <div class="video-section">
+            <div class="video-label">Playback Speed (Any value, e.g., 1.75, 2.5)</div>
+            <div class="flex items-center gap-2 justify-center">
+                <input type="text" id="videoSpeed" class="video-speed-input" value="1" placeholder="Enter speed">
+                <span class="text-sm font-semibold opacity-60">x</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 mt-4">
+            <button onclick="closeVideoPopup()" class="save-btn secondary" style="flex: 1;">
+                <i class="fas fa-times mr-2"></i>Close
+            </button>
+            <button onclick="calculateVideoTime()" class="save-btn primary" style="flex: 1;">
+                <i class="fas fa-calculator mr-2"></i>Calculate
+            </button>
+        </div>
+
+        <div id="videoResult" class="hidden mt-4 p-3 rounded-lg" style="background: var(--bg); border: 1px solid var(--border);">
+            <div class="text-xs font-semibold opacity-60 mb-2">Actual Time Required:</div>
+            <div id="videoResultTime" class="text-2xl font-bold text-center" style="color: var(--primary);"></div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-3"></div>
 
@@ -1287,6 +1586,7 @@
             loadThemePreference();
             startRealTimeClock();
             setupTimerInputs();
+            setupVideoInputs();
             setupWheelZoom();
         }
 
@@ -2973,6 +3273,16 @@
             }
         });
 
+        // Calculator and Video popup click outside handlers
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#calculatorPopup') && !e.target.closest('#calculatorBtn')) {
+                closeCalculator();
+            }
+            if (!e.target.closest('#videoPopup') && !e.target.closest('#videoBtn')) {
+                closeVideoPopup();
+            }
+        });
+
         // ==================== MODALS ====================
         
         function showHelp() {
@@ -3051,6 +3361,8 @@
                             closeHelp();
                             closeTimerAlert();
                             hideColorTray();
+                            closeCalculator();
+                            closeVideoPopup();
                             hideSaveModal();
                             break;
                         case '?':
@@ -3059,6 +3371,9 @@
                     }
                 }
             });
+
+        // Calculator keyboard support
+        document.addEventListener('keydown', handleCalcKeyboard);
         }
 
         // ==================== ENABLE CONTROLS ====================
@@ -3138,6 +3453,310 @@
                 window.resizeTimer = setTimeout(reRenderAllPages, 250);
             }
         });
-    </script>
+    
+
+        // ==================== SCIENTIFIC CALCULATOR WITH KEYBOARD SUPPORT ====================
+
+        let calcExpression = '';
+        let calcResult = '';
+        let calcKeyboardActive = false;
+
+        function updateCalcDisplay(value) {
+            const display = document.getElementById('calcDisplay');
+            if (display) {
+                display.textContent = value || '0';
+            }
+        }
+
+        function toggleCalculator() {
+            const popup = document.getElementById('calculatorPopup');
+            if (!popup) return;
+
+            const isVisible = popup.classList.contains('show');
+
+            if (isVisible) {
+                closeCalculator();
+            } else {
+                const calcBtn = document.getElementById('calculatorBtn');
+                if (calcBtn) {
+                    const btnRect = calcBtn.getBoundingClientRect();
+                    popup.style.left = (btnRect.left - 140) + 'px';
+                    popup.style.top = (btnRect.bottom + 10) + 'px';
+                }
+                popup.classList.add('show');
+                calcKeyboardActive = true;
+                showToast('Numpad enabled! Start typing...', 'success');
+            }
+        }
+
+        function closeCalculator() {
+            const popup = document.getElementById('calculatorPopup');
+            if (popup) {
+                popup.classList.remove('show');
+                calcKeyboardActive = false;
+            }
+        }
+
+        // Keyboard event handler for calculator
+        function handleCalcKeyboard(e) {
+            if (!calcKeyboardActive) return;
+
+            const key = e.key;
+
+            // Numbers and decimal
+            if (/^[0-9.]$/.test(key)) {
+                e.preventDefault();
+                calcAppend(key);
+            }
+            // Operators
+            else if (key === '+' || key === '-' || key === '*' || key === '/') {
+                e.preventDefault();
+                calcAppend(key);
+            }
+            // Enter = Calculate
+            else if (key === 'Enter' || key === '=') {
+                e.preventDefault();
+                calcCalculate();
+            }
+            // Backspace
+            else if (key === 'Backspace') {
+                e.preventDefault();
+                calcBackspace();
+            }
+            // Delete or Escape = Clear
+            else if (key === 'Delete') {
+                e.preventDefault();
+                calcClear();
+            }
+            // Parentheses
+            else if (key === '(' || key === ')') {
+                e.preventDefault();
+                calcAppend(key);
+            }
+            // Numpad operations
+            else if (key === 'NumpadAdd') {
+                e.preventDefault();
+                calcAppend('+');
+            }
+            else if (key === 'NumpadSubtract') {
+                e.preventDefault();
+                calcAppend('-');
+            }
+            else if (key === 'NumpadMultiply') {
+                e.preventDefault();
+                calcAppend('*');
+            }
+            else if (key === 'NumpadDivide') {
+                e.preventDefault();
+                calcAppend('/');
+            }
+            else if (key === 'NumpadDecimal') {
+                e.preventDefault();
+                calcAppend('.');
+            }
+        }
+
+        function calcAppend(value) {
+            if (calcResult !== '') {
+                calcExpression = calcResult;
+                calcResult = '';
+            }
+            calcExpression += value;
+            updateCalcDisplay(calcExpression);
+        }
+
+        function calcClear() {
+            calcExpression = '';
+            calcResult = '';
+            updateCalcDisplay('0');
+        }
+
+        function calcClearEntry() {
+            if (calcResult !== '') {
+                calcResult = '';
+                updateCalcDisplay(calcExpression);
+            } else {
+                calcExpression = '';
+                updateCalcDisplay('0');
+            }
+        }
+
+        function calcBackspace() {
+            if (calcResult !== '') {
+                calcResult = '';
+                updateCalcDisplay(calcExpression);
+            } else {
+                calcExpression = calcExpression.slice(0, -1);
+                updateCalcDisplay(calcExpression || '0');
+            }
+        }
+
+        function calcToggleSign() {
+            if (calcResult !== '') {
+                calcResult = String(-parseFloat(calcResult));
+                updateCalcDisplay(calcResult);
+            } else if (calcExpression !== '') {
+                const num = parseFloat(calcExpression);
+                if (!isNaN(num)) {
+                    calcExpression = String(-num);
+                    updateCalcDisplay(calcExpression);
+                }
+            }
+        }
+
+        function calcFunction(func) {
+            let expr = calcExpression || calcResult;
+            if (expr === '') expr = '0';
+
+            try {
+                let value = eval(expr.replace(/Math.PI/g, String(Math.PI)));
+                let result;
+
+                switch(func) {
+                    case 'sin':
+                        result = Math.sin(value * Math.PI / 180);
+                        break;
+                    case 'cos':
+                        result = Math.cos(value * Math.PI / 180);
+                        break;
+                    case 'tan':
+                        result = Math.tan(value * Math.PI / 180);
+                        break;
+                    case 'log':
+                        result = Math.log10(value);
+                        break;
+                    case 'ln':
+                        result = Math.log(value);
+                        break;
+                    case 'sqrt':
+                        result = Math.sqrt(value);
+                        break;
+                    case 'square':
+                        result = value * value;
+                        break;
+                    case 'power':
+                        calcExpression = expr + '**';
+                        updateCalcDisplay(calcExpression);
+                        return;
+                    default:
+                        return;
+                }
+
+                calcResult = String(result);
+                calcExpression = '';
+                updateCalcDisplay(calcResult);
+                showToast(func + '(' + value + ') = ' + result, 'success');
+            } catch (e) {
+                showToast('Invalid expression', 'error');
+            }
+        }
+
+        function calcCalculate() {
+            if (calcExpression === '') return;
+
+            try {
+                let expr = calcExpression.replace(/Math.PI/g, String(Math.PI));
+                expr = expr.replace(/\*\*/g, '**');
+
+                calcResult = String(eval(expr));
+                updateCalcDisplay(calcResult);
+                showToast('Result: ' + calcResult, 'success');
+                calcExpression = '';
+            } catch (e) {
+                showToast('Error in calculation', 'error');
+                updateCalcDisplay('Error');
+            }
+        }
+
+        // ==================== VIDEO POPUP SYSTEM ====================
+
+        function setupVideoInputs() {
+            const inputs = ['videoHours', 'videoMinutes', 'videoSeconds'];
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (!input) return;
+
+                input.addEventListener('input', (e) => {
+                    let val = parseInt(e.target.value) || 0;
+                    const max = id === 'videoHours' ? 23 : 59;
+                    if (val > max) val = max;
+                    if (val < 0) val = 0;
+                    e.target.value = val.toString().padStart(2, '0');
+                });
+                input.addEventListener('focus', (e) => e.target.select());
+            });
+
+            const speedInput = document.getElementById('videoSpeed');
+            if (speedInput) {
+                speedInput.addEventListener('focus', (e) => e.target.select());
+            }
+        }
+
+        function toggleVideoPopup() {
+            const popup = document.getElementById('videoPopup');
+            if (!popup) return;
+
+            const isVisible = popup.classList.contains('show');
+
+            if (isVisible) {
+                closeVideoPopup();
+            } else {
+                const videoBtn = document.getElementById('videoBtn');
+                if (videoBtn) {
+                    const btnRect = videoBtn.getBoundingClientRect();
+                    popup.style.left = (btnRect.left - 100) + 'px';
+                    popup.style.top = (btnRect.bottom + 10) + 'px';
+                }
+
+                popup.classList.add('show');
+
+                const videoResult = document.getElementById('videoResult');
+                if (videoResult) {
+                    videoResult.classList.add('hidden');
+                }
+            }
+        }
+
+        function closeVideoPopup() {
+            const popup = document.getElementById('videoPopup');
+            if (popup) {
+                popup.classList.remove('show');
+            }
+        }
+
+        function calculateVideoTime() {
+            const hours = parseInt(document.getElementById('videoHours').value) || 0;
+            const minutes = parseInt(document.getElementById('videoMinutes').value) || 0;
+            const seconds = parseInt(document.getElementById('videoSeconds').value) || 0;
+            const speedInput = document.getElementById('videoSpeed').value.trim();
+            const speed = parseFloat(speedInput) || 1;
+
+            const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+
+            if (totalSeconds === 0) {
+                showToast('Please enter video time', 'warning');
+                return;
+            }
+
+            if (speed <= 0) {
+                showToast('Speed must be greater than 0', 'error');
+                return;
+            }
+
+            const actualSeconds = Math.round(totalSeconds / speed);
+
+            const actualHours = Math.floor(actualSeconds / 3600);
+            const actualMinutes = Math.floor((actualSeconds % 3600) / 60);
+            const actualSecs = actualSeconds % 60;
+
+            const resultTime = actualHours.toString().padStart(2, '0') + ':' + actualMinutes.toString().padStart(2, '0') + ':' + actualSecs.toString().padStart(2, '0');
+
+            document.getElementById('videoResultTime').textContent = resultTime;
+            document.getElementById('videoResult').classList.remove('hidden');
+
+            showToast('Video will take ' + resultTime + ' at ' + speed + 'x speed', 'success');
+        }
+
+</script>
 </body>
 </html>
